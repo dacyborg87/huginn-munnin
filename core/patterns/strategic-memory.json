@@ -1,0 +1,63 @@
+[
+  {
+    "failure_modes": [
+      "missing_chain_correlation",
+      "missing_detection",
+      "weak_response_coverage"
+    ],
+    "key": "phase:post-auth",
+    "occurrence_count": 2,
+    "pattern_id": "a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf",
+    "pattern_type": "recurring_phase_weakness",
+    "recommended_focus": "Prioritize analyst-reviewed coverage improvements for post-auth activity.",
+    "related_chains": [
+      "sim-full-lifecycle-001"
+    ],
+    "related_techniques": [
+      "T1078",
+      "T1087"
+    ],
+    "status": "memory_only",
+    "updated_at": "2026-06-01T19:39:43.337535+00:00"
+  },
+  {
+    "failure_modes": [
+      "telemetry_blind_spot",
+      "missing_transition_visibility"
+    ],
+    "key": "sim-full-lifecycle-001:undetected:T1078,T1087",
+    "occurrence_count": 1,
+    "pattern_id": "9a0bee3a-981c-4219-9211-ef546676c845",
+    "pattern_type": "attack_failure_combination",
+    "recommended_focus": "Reduce modeled chain success probability through visibility and response coverage for T1078, T1087.",
+    "related_chains": [
+      "sim-full-lifecycle-001"
+    ],
+    "related_techniques": [
+      "T1078",
+      "T1087"
+    ],
+    "status": "memory_only:risk_score=75",
+    "updated_at": "2026-06-01T19:39:43.337549+00:00"
+  },
+  {
+    "failure_modes": [
+      "add_detection_backlog_item",
+      "add_detection_backlog_item"
+    ],
+    "key": "top_defensive_actions",
+    "occurrence_count": 2,
+    "pattern_id": "22d8b5d8-ed3c-4f06-a498-ead1cea614f9",
+    "pattern_type": "defensive_decision_focus",
+    "recommended_focus": "Track whether top defensive recommendations reduce future chain risk.",
+    "related_chains": [
+      "sim-full-lifecycle-001"
+    ],
+    "related_techniques": [
+      "T1078",
+      "T1087"
+    ],
+    "status": "memory_only",
+    "updated_at": "2026-06-01T19:39:43.337557+00:00"
+  }
+]

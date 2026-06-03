@@ -1,0 +1,66 @@
+[
+  {
+    "correlated_count": 1,
+    "detected_count": 1,
+    "exposure_level": "low",
+    "instrumentation_score": 1.0,
+    "layer": "pre-auth",
+    "response_covered_count": 1,
+    "technique_count": 1,
+    "techniques": [
+      {
+        "correlated_across_chain": true,
+        "detected": true,
+        "response_coverage_effectiveness": "partial",
+        "technique_id": "T1046",
+        "technique_name": "Network Service Discovery"
+      }
+    ],
+    "under_instrumented": false
+  },
+  {
+    "correlated_count": 1,
+    "detected_count": 1,
+    "exposure_level": "low",
+    "instrumentation_score": 1.0,
+    "layer": "auth",
+    "response_covered_count": 1,
+    "technique_count": 1,
+    "techniques": [
+      {
+        "correlated_across_chain": true,
+        "detected": true,
+        "response_coverage_effectiveness": "strong",
+        "technique_id": "T1110",
+        "technique_name": "Brute Force"
+      }
+    ],
+    "under_instrumented": false
+  },
+  {
+    "correlated_count": 0,
+    "detected_count": 0,
+    "exposure_level": "critical",
+    "instrumentation_score": 0.0,
+    "layer": "post-auth",
+    "response_covered_count": 0,
+    "technique_count": 2,
+    "techniques": [
+      {
+        "correlated_across_chain": false,
+        "detected": false,
+        "response_coverage_effectiveness": "none",
+        "technique_id": "T1078",
+        "technique_name": "Valid Accounts"
+      },
+      {
+        "correlated_across_chain": false,
+        "detected": false,
+        "response_coverage_effectiveness": "none",
+        "technique_id": "T1087",
+        "technique_name": "Account Discovery"
+      }
+    ],
+    "under_instrumented": true
+  }
+]

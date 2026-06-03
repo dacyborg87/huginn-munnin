@@ -1,0 +1,72 @@
+[
+  {
+    "architectural_change": "Introduce a subsystem that normalizes successful logon context, session activity, account enumeration, and follow-on host discovery into canonical SOC events.",
+    "depends_on": [
+      "canonical event schema",
+      "event bus",
+      "strategic memory"
+    ],
+    "design_area": "telemetry_layer",
+    "expected_outcome": "Reduce blind spots after credential access and support chain disruption before lateral movement.",
+    "guardrails": [
+      "Do not generate detection rules",
+      "Require analyst-approved telemetry mapping"
+    ],
+    "recommendation_id": "design.post_auth_telemetry_layer",
+    "recommended_subsystem": "Post-auth activity monitor",
+    "status": "recommendation_only",
+    "title": "Add a post-auth telemetry enrichment layer"
+  },
+  {
+    "architectural_change": "Maintain sliding windows of related source, account, host, and MITRE stage context so isolated detections become chain-aware decisions.",
+    "depends_on": [
+      "event bus",
+      "attack chain analyzer",
+      "coverage matrix"
+    ],
+    "design_area": "correlation_architecture",
+    "expected_outcome": "Increase correlation across attack stages and reduce missed transitions.",
+    "guardrails": [
+      "Recommendation-only",
+      "No automatic containment"
+    ],
+    "recommendation_id": "design.chain_correlation_service",
+    "recommended_subsystem": "Chain correlation service",
+    "status": "recommendation_only",
+    "title": "Add an attack-chain correlation service"
+  },
+  {
+    "architectural_change": "Track which MITRE stages have response playbook coverage, expected evidence, and escalation criteria.",
+    "depends_on": [
+      "playbook routes",
+      "coverage matrix"
+    ],
+    "design_area": "response_architecture",
+    "expected_outcome": "Expose response gaps before new detections are promoted.",
+    "guardrails": [
+      "Do not auto-create playbooks",
+      "Require SOC review"
+    ],
+    "recommendation_id": "design.response_orchestration_index",
+    "recommended_subsystem": "Response orchestration index",
+    "status": "recommendation_only",
+    "title": "Create a response coverage index"
+  },
+  {
+    "architectural_change": "Define required telemetry, correlation keys, response coverage, and evidence expectations for this attack surface layer.",
+    "depends_on": [
+      "attack surface model",
+      "coverage matrix"
+    ],
+    "design_area": "attack_surface_instrumentation",
+    "expected_outcome": "Raise instrumentation score and reduce modeled attack success probability.",
+    "guardrails": [
+      "No detector edits",
+      "No automatic lab changes"
+    ],
+    "recommendation_id": "design.surface_instrumentation.post-auth",
+    "recommended_subsystem": "post-auth instrumentation map",
+    "status": "recommendation_only",
+    "title": "Improve post-auth attack surface instrumentation"
+  }
+]

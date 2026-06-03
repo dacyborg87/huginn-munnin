@@ -1,0 +1,128 @@
+[
+  {
+    "chain_id": "sim-full-lifecycle-001",
+    "chain_severity": "critical",
+    "detected_techniques": [
+      "T1046",
+      "T1110"
+    ],
+    "missing_transitions": [
+      {
+        "detected_transition": false,
+        "from_phase": "credential_access",
+        "from_technique": "T1110",
+        "reason": "One or both adjacent chain stages lack detection coverage.",
+        "to_phase": "post-auth",
+        "to_technique": "T1078"
+      },
+      {
+        "detected_transition": false,
+        "from_phase": "post-auth",
+        "from_technique": "T1078",
+        "reason": "One or both adjacent chain stages lack detection coverage.",
+        "to_phase": "post-auth",
+        "to_technique": "T1087"
+      }
+    ],
+    "phase_sequence": [
+      "recon",
+      "recon",
+      "credential_access",
+      "post-auth",
+      "post-auth"
+    ],
+    "steps": [
+      {
+        "context": {
+          "attack_step": "recon",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "detected": true,
+        "event_id": "f26fa03a-6c8e-44ca-b906-12c974dcbcbf",
+        "event_type": "lab.event",
+        "phase": "recon",
+        "response_routed": true,
+        "sequence": 1,
+        "tactic": "Discovery",
+        "technique_id": "T1046",
+        "technique_name": "Network Service Discovery",
+        "timestamp": "2026-06-01T18:43:55.322568+00:00"
+      },
+      {
+        "context": {
+          "attack_step": "smb_probe",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "detected": true,
+        "event_id": "d2fe3656-5e49-472e-ab56-57f500cf4bd4",
+        "event_type": "lab.event",
+        "phase": "recon",
+        "response_routed": true,
+        "sequence": 2,
+        "tactic": "Discovery",
+        "technique_id": "T1046",
+        "technique_name": "Network Service Discovery",
+        "timestamp": "2026-06-01T18:43:55.323491+00:00"
+      },
+      {
+        "context": {
+          "attack_step": "password_spray",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "detected": true,
+        "event_id": "922f1238-6fdb-4bb0-ac56-7905619813db",
+        "event_type": "lab.event",
+        "phase": "credential_access",
+        "response_routed": true,
+        "sequence": 3,
+        "tactic": "Credential Access",
+        "technique_id": "T1110",
+        "technique_name": "Brute Force",
+        "timestamp": "2026-06-01T18:43:55.323568+00:00"
+      },
+      {
+        "context": {
+          "attack_step": "valid_account",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "detected": false,
+        "event_id": "64ef7517-c6bf-419f-99d1-2c6d93984694",
+        "event_type": "lab.event",
+        "phase": "post-auth",
+        "response_routed": false,
+        "sequence": 4,
+        "tactic": "Defense Evasion",
+        "technique_id": "T1078",
+        "technique_name": "Valid Accounts",
+        "timestamp": "2026-06-01T18:43:55.323626+00:00"
+      },
+      {
+        "context": {
+          "attack_step": "post_auth_discovery",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "detected": false,
+        "event_id": "17a326f0-41d8-44dd-9a25-3fc3f1c7399f",
+        "event_type": "lab.event",
+        "phase": "post-auth",
+        "response_routed": false,
+        "sequence": 5,
+        "tactic": "Discovery",
+        "technique_id": "T1087",
+        "technique_name": "Account Discovery",
+        "timestamp": "2026-06-01T18:43:55.323679+00:00"
+      }
+    ],
+    "technique_sequence": [
+      "T1046",
+      "T1046",
+      "T1110",
+      "T1078",
+      "T1087"
+    ],
+    "undetected_techniques": [
+      "T1078",
+      "T1087"
+    ]
+  }
+]

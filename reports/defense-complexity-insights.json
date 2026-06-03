@@ -1,0 +1,36 @@
+[
+  {
+    "evidence": {
+      "design_recommendation_count": 4,
+      "undercovered_techniques": [
+        "T1078",
+        "T1087"
+      ]
+    },
+    "insight_id": "complexity.design_sprawl_under_low_coverage",
+    "insight_type": "design_sprawl_risk",
+    "severity": "medium",
+    "simplification_opportunity": "Sequence architecture changes around one shared post-auth telemetry and correlation layer before adding specialized subsystems.",
+    "status": "recommendation_only",
+    "title": "Multiple new subsystems are recommended while coverage remains low"
+  },
+  {
+    "evidence": {
+      "architecture_event_types": [
+        "attack_surface.model_created",
+        "defense.evolution_metrics_created",
+        "defense.learning_insights_created",
+        "defense.plan_created",
+        "defense.priorities_created",
+        "security_architecture.analysis_created"
+      ],
+      "count": 6
+    },
+    "insight_id": "complexity.architecture_event_volume",
+    "insight_type": "event_taxonomy_growth",
+    "severity": "low",
+    "simplification_opportunity": "Group architecture intelligence events under a common dashboard view and lifecycle state.",
+    "status": "recommendation_only",
+    "title": "Architecture intelligence event taxonomy is expanding"
+  }
+]

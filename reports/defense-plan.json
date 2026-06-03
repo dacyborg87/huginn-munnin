@@ -1,0 +1,120 @@
+{
+  "chain_disruption_strategy": [
+    {
+      "action": "Create manually reviewed detection backlog item for T1078 Valid Accounts",
+      "approval_required": true,
+      "current_detection_state": {
+        "correlated_across_chain": false,
+        "detected": false,
+        "response_coverage_effectiveness": "none"
+      },
+      "expected_chain_disruption": "Increase visibility at a currently undetected chain stage.",
+      "technique_id": "T1078",
+      "why_now": {
+        "attack_chain_severity": "critical",
+        "phase": "post-auth",
+        "priority_score": 19
+      }
+    },
+    {
+      "action": "Create manually reviewed detection backlog item for T1087 Account Discovery",
+      "approval_required": true,
+      "current_detection_state": {
+        "correlated_across_chain": false,
+        "detected": false,
+        "response_coverage_effectiveness": "none"
+      },
+      "expected_chain_disruption": "Increase visibility at a currently undetected chain stage.",
+      "technique_id": "T1087",
+      "why_now": {
+        "attack_chain_severity": "critical",
+        "phase": "post-auth",
+        "priority_score": 19
+      }
+    }
+  ],
+  "chain_risk_summary": [
+    {
+      "attack_success_probability": 0.75,
+      "chain_id": "sim-full-lifecycle-001",
+      "chain_severity": "critical",
+      "detected_techniques": [
+        "T1046",
+        "T1110"
+      ],
+      "missing_transition_count": 2,
+      "risk_level": "critical",
+      "risk_score": 75,
+      "undetected_techniques": [
+        "T1078",
+        "T1087"
+      ]
+    }
+  ],
+  "guardrails": [
+    "Do not modify detection rules automatically.",
+    "Do not modify lab configurations.",
+    "Route all rule and telemetry recommendations through analyst review.",
+    "Use reports and pattern memory as decision support, not autonomous enforcement."
+  ],
+  "objective": "Disrupt the most probable successful attack chain with analyst-approved defensive improvements.",
+  "plan_id": "defense-plan.current",
+  "prioritized_actions": [
+    {
+      "action_id": "defense.add_detection_backlog_item.t1078",
+      "action_type": "add_detection_backlog_item",
+      "chain_disruption_value": 4,
+      "evidence": {
+        "attack_chain_severity": "critical",
+        "gap_evidence": {
+          "correlated_across_chain": false,
+          "detected": false,
+          "detection_count": 0,
+          "lab_count": 1,
+          "missing_transition_count": 2,
+          "playbook_count": 0,
+          "response_coverage_effectiveness": "none"
+        },
+        "gap_priority_score": 19,
+        "gap_severity": "critical",
+        "max_attack_success_risk": 75,
+        "phase": "post-auth"
+      },
+      "implementation_efficiency": 3,
+      "priority_score": 18.55,
+      "rank": 1,
+      "risk_reduction_impact": 11.55,
+      "status": "recommendation_only",
+      "technique_id": "T1078",
+      "title": "Create manually reviewed detection backlog item for T1078 Valid Accounts"
+    },
+    {
+      "action_id": "defense.add_detection_backlog_item.t1087",
+      "action_type": "add_detection_backlog_item",
+      "chain_disruption_value": 4,
+      "evidence": {
+        "attack_chain_severity": "critical",
+        "gap_evidence": {
+          "correlated_across_chain": false,
+          "detected": false,
+          "detection_count": 0,
+          "lab_count": 1,
+          "missing_transition_count": 1,
+          "playbook_count": 0,
+          "response_coverage_effectiveness": "none"
+        },
+        "gap_priority_score": 19,
+        "gap_severity": "critical",
+        "max_attack_success_risk": 75,
+        "phase": "post-auth"
+      },
+      "implementation_efficiency": 3,
+      "priority_score": 18.55,
+      "rank": 2,
+      "risk_reduction_impact": 11.55,
+      "status": "recommendation_only",
+      "technique_id": "T1087",
+      "title": "Create manually reviewed detection backlog item for T1087 Account Discovery"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "detection_coverage": {
+    "coverage_ratio": 0.5,
+    "covered_techniques": [
+      "T1046",
+      "T1110"
+    ],
+    "detection_technique_counts": {
+      "T1046": 1,
+      "T1110": 1
+    },
+    "lab_technique_counts": {
+      "T1046": 2,
+      "T1078": 1,
+      "T1087": 1,
+      "T1110": 1
+    },
+    "missed_techniques": [
+      "T1078",
+      "T1087"
+    ]
+  },
+  "false_positive_indicators": {
+    "by_detection": {},
+    "false_positive_count": 0,
+    "false_positive_ratio": 0.0
+  },
+  "generated_from": {
+    "detection_events": 2,
+    "lab_events": 5,
+    "outcomes": 2,
+    "playbook_events": 2
+  },
+  "mean_detection_to_response_time": {
+    "sample_size": 2,
+    "seconds": 0.0001
+  },
+  "playbook_success_rate": {
+    "by_playbook": {
+      "playbooks/account-lockout.md": {
+        "failure": 0,
+        "partial": 0,
+        "success": 1,
+        "success_rate": 1.0,
+        "total": 1
+      },
+      "playbooks/network-containment.md": {
+        "failure": 0,
+        "partial": 1,
+        "success": 0,
+        "success_rate": 0.0,
+        "total": 1
+      }
+    }
+  },
+  "recommendations": [
+    "Review missed lab techniques and create manually approved detection backlog."
+  ]
+}

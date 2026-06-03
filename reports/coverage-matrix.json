@@ -1,0 +1,82 @@
+[
+  {
+    "correlated_across_chain": true,
+    "detected": true,
+    "detection_count": 1,
+    "lab_count": 2,
+    "outcome_summary": {
+      "failure": 0,
+      "false_positive": 0,
+      "partial": 1,
+      "success": 0,
+      "total": 1
+    },
+    "playbook_count": 1,
+    "response_coverage_effectiveness": "partial",
+    "tactics": [
+      "Discovery"
+    ],
+    "technique_id": "T1046",
+    "technique_name": "Network Service Discovery"
+  },
+  {
+    "correlated_across_chain": false,
+    "detected": false,
+    "detection_count": 0,
+    "lab_count": 1,
+    "outcome_summary": {
+      "failure": 0,
+      "false_positive": 0,
+      "partial": 0,
+      "success": 0,
+      "total": 0
+    },
+    "playbook_count": 0,
+    "response_coverage_effectiveness": "none",
+    "tactics": [
+      "Defense Evasion"
+    ],
+    "technique_id": "T1078",
+    "technique_name": "Valid Accounts"
+  },
+  {
+    "correlated_across_chain": false,
+    "detected": false,
+    "detection_count": 0,
+    "lab_count": 1,
+    "outcome_summary": {
+      "failure": 0,
+      "false_positive": 0,
+      "partial": 0,
+      "success": 0,
+      "total": 0
+    },
+    "playbook_count": 0,
+    "response_coverage_effectiveness": "none",
+    "tactics": [
+      "Discovery"
+    ],
+    "technique_id": "T1087",
+    "technique_name": "Account Discovery"
+  },
+  {
+    "correlated_across_chain": true,
+    "detected": true,
+    "detection_count": 1,
+    "lab_count": 1,
+    "outcome_summary": {
+      "failure": 0,
+      "false_positive": 0,
+      "partial": 0,
+      "success": 1,
+      "total": 1
+    },
+    "playbook_count": 1,
+    "response_coverage_effectiveness": "strong",
+    "tactics": [
+      "Credential Access"
+    ],
+    "technique_id": "T1110",
+    "technique_name": "Brute Force"
+  }
+]

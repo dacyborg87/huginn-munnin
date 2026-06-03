@@ -1,0 +1,86 @@
+[
+  {
+    "affected_layer": "post-auth",
+    "architectural_impact": "The system can detect early discovery and brute force activity, but loses visibility after credential use, allowing a chain to progress without correlated containment.",
+    "evidence": {
+      "chains_with_post_auth_misses": [
+        "sim-full-lifecycle-001"
+      ],
+      "post_auth_gap_count": 2,
+      "strategic_memory_patterns": [
+        "a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf"
+      ],
+      "undetected_post_auth_techniques": [
+        "T1078",
+        "T1087"
+      ]
+    },
+    "recommendation_scope": "architecture_only",
+    "severity": "critical",
+    "status": "recommendation_only",
+    "timestamp": "2026-06-01T19:51:09.128090+00:00",
+    "title": "Post-auth activity lacks architectural visibility and response coverage",
+    "weakness_id": "15953a2c-3b98-4640-9401-1306f95162e3",
+    "weakness_type": "post_auth_visibility_gap"
+  },
+  {
+    "affected_layer": "correlation",
+    "architectural_impact": "Isolated detections can route playbooks, but incomplete transition visibility limits chain-level disruption decisions.",
+    "evidence": {
+      "missing_transition_count": 2,
+      "missing_transitions": [
+        {
+          "detected_transition": false,
+          "from_phase": "credential_access",
+          "from_technique": "T1110",
+          "reason": "One or both adjacent chain stages lack detection coverage.",
+          "to_phase": "post-auth",
+          "to_technique": "T1078"
+        },
+        {
+          "detected_transition": false,
+          "from_phase": "post-auth",
+          "from_technique": "T1078",
+          "reason": "One or both adjacent chain stages lack detection coverage.",
+          "to_phase": "post-auth",
+          "to_technique": "T1087"
+        }
+      ],
+      "strategic_failure_modes": [
+        "add_detection_backlog_item",
+        "missing_chain_correlation",
+        "missing_detection",
+        "missing_transition_visibility",
+        "telemetry_blind_spot",
+        "weak_response_coverage"
+      ]
+    },
+    "recommendation_scope": "architecture_only",
+    "severity": "high",
+    "status": "recommendation_only",
+    "timestamp": "2026-06-01T19:51:09.128543+00:00",
+    "title": "Attack stages are not consistently linked into a defensive chain model",
+    "weakness_id": "72f28a3e-9cd6-4559-9859-a5c091d28576",
+    "weakness_type": "chain_correlation_gap"
+  },
+  {
+    "affected_layer": "response",
+    "architectural_impact": "Even when future telemetry is added, affected stages need response routing and playbook coverage to reduce dwell time.",
+    "evidence": {
+      "response_learning_insights": [
+        "849eb9d0-44f6-42a7-be92-8f8fe8d07681"
+      ],
+      "weak_response_techniques": [
+        "T1078",
+        "T1087"
+      ]
+    },
+    "recommendation_scope": "architecture_only",
+    "severity": "medium",
+    "status": "recommendation_only",
+    "timestamp": "2026-06-01T19:51:09.128554+00:00",
+    "title": "Response orchestration is incomplete for under-instrumented techniques",
+    "weakness_id": "9cc29804-189f-488b-bd76-abf3ebdbf8b3",
+    "weakness_type": "response_orchestration_gap"
+  }
+]

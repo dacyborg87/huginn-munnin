@@ -1,0 +1,16 @@
+{
+  "critical_gap_count": 2,
+  "deltas": {
+    "attack_success_probability_delta": null,
+    "baseline": true,
+    "coverage_ratio_delta": null,
+    "open_gap_count_delta": null
+  },
+  "detection_coverage_ratio": 0.5,
+  "gap_closure_rate": 0.0,
+  "highest_attack_success_probability": 0.75,
+  "open_gap_count": 2,
+  "snapshot_id": "0fa144d6-e22b-4c45-96f9-5399faabb3fc",
+  "status": "measurement_only",
+  "timestamp": "2026-06-01T19:39:43.338337+00:00"
+}

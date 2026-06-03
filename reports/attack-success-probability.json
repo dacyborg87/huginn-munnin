@@ -1,0 +1,23 @@
+[
+  {
+    "chain_id": "sim-full-lifecycle-001",
+    "detection_gap_factor": 0.4,
+    "evidence": {
+      "chain_severity": "critical",
+      "detected_steps": 3,
+      "missing_transitions": 2,
+      "steps_without_response": 2,
+      "total_steps": 5,
+      "undetected_steps": 2,
+      "undetected_techniques": [
+        "T1078",
+        "T1087"
+      ]
+    },
+    "probability": 0.75,
+    "response_weakness_factor": 0.4,
+    "risk_level": "critical",
+    "risk_score": 75,
+    "telemetry_blind_spot_factor": 0.4
+  }
+]
