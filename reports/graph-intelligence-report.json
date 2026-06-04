@@ -1,0 +1,316 @@
+{
+  "questions": {
+    "connected_weaknesses": [
+      {
+        "id": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+        "label": "Post-auth activity lacks architectural visibility and response coverage",
+        "properties": {
+          "affected_layer": "post-auth",
+          "architectural_impact": "The system can detect early discovery and brute force activity, but loses visibility after credential use, allowing a chain to progress without correlated containment.",
+          "severity": "critical",
+          "status": "recommendation_only",
+          "weakness_type": "post_auth_visibility_gap"
+        },
+        "type": "Architecture Weakness"
+      },
+      {
+        "id": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576",
+        "label": "Attack stages are not consistently linked into a defensive chain model",
+        "properties": {
+          "affected_layer": "correlation",
+          "architectural_impact": "Isolated detections can route playbooks, but incomplete transition visibility limits chain-level disruption decisions.",
+          "severity": "high",
+          "status": "recommendation_only",
+          "weakness_type": "chain_correlation_gap"
+        },
+        "type": "Architecture Weakness"
+      },
+      {
+        "id": "weakness:9cc29804-189f-488b-bd76-abf3ebdbf8b3",
+        "label": "Response orchestration is incomplete for under-instrumented techniques",
+        "properties": {
+          "affected_layer": "response",
+          "architectural_impact": "Even when future telemetry is added, affected stages need response routing and playbook coverage to reduce dwell time.",
+          "severity": "medium",
+          "status": "recommendation_only",
+          "weakness_type": "response_orchestration_gap"
+        },
+        "type": "Architecture Weakness"
+      }
+    ],
+    "recommendations_for_technique": [
+      {
+        "id": "recommendation:design.chain_correlation_service",
+        "label": "Add an attack-chain correlation service",
+        "properties": {
+          "architectural_change": "Maintain sliding windows of related source, account, host, and MITRE stage context so isolated detections become chain-aware decisions.",
+          "design_area": "correlation_architecture",
+          "expected_outcome": "Increase correlation across attack stages and reduce missed transitions.",
+          "recommended_subsystem": "Chain correlation service",
+          "status": "recommendation_only"
+        },
+        "type": "Defense Recommendation"
+      },
+      {
+        "id": "recommendation:design.post_auth_telemetry_layer",
+        "label": "Add a post-auth telemetry enrichment layer",
+        "properties": {
+          "architectural_change": "Introduce a subsystem that normalizes successful logon context, session activity, account enumeration, and follow-on host discovery into canonical SOC events.",
+          "design_area": "telemetry_layer",
+          "expected_outcome": "Reduce blind spots after credential access and support chain disruption before lateral movement.",
+          "recommended_subsystem": "Post-auth activity monitor",
+          "status": "recommendation_only"
+        },
+        "type": "Defense Recommendation"
+      },
+      {
+        "id": "recommendation:design.response_orchestration_index",
+        "label": "Create a response coverage index",
+        "properties": {
+          "architectural_change": "Track which MITRE stages have response playbook coverage, expected evidence, and escalation criteria.",
+          "design_area": "response_architecture",
+          "expected_outcome": "Expose response gaps before new detections are promoted.",
+          "recommended_subsystem": "Response orchestration index",
+          "status": "recommendation_only"
+        },
+        "type": "Defense Recommendation"
+      },
+      {
+        "id": "recommendation:design.surface_instrumentation.post-auth",
+        "label": "Improve post-auth attack surface instrumentation",
+        "properties": {
+          "architectural_change": "Define required telemetry, correlation keys, response coverage, and evidence expectations for this attack surface layer.",
+          "design_area": "attack_surface_instrumentation",
+          "expected_outcome": "Raise instrumentation score and reduce modeled attack success probability.",
+          "recommended_subsystem": "post-auth instrumentation map",
+          "status": "recommendation_only"
+        },
+        "type": "Defense Recommendation"
+      }
+    ],
+    "related_entities": [
+      {
+        "direction": "incoming",
+        "id": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+        "label": "Post-auth activity lacks architectural visibility and response coverage",
+        "properties": {
+          "affected_layer": "post-auth",
+          "architectural_impact": "The system can detect early discovery and brute force activity, but loses visibility after credential use, allowing a chain to progress without correlated containment.",
+          "severity": "critical",
+          "status": "recommendation_only",
+          "weakness_type": "post_auth_visibility_gap"
+        },
+        "relationship_type": "weakens",
+        "type": "Architecture Weakness"
+      },
+      {
+        "direction": "incoming",
+        "id": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576",
+        "label": "Attack stages are not consistently linked into a defensive chain model",
+        "properties": {
+          "affected_layer": "correlation",
+          "architectural_impact": "Isolated detections can route playbooks, but incomplete transition visibility limits chain-level disruption decisions.",
+          "severity": "high",
+          "status": "recommendation_only",
+          "weakness_type": "chain_correlation_gap"
+        },
+        "relationship_type": "weakens",
+        "type": "Architecture Weakness"
+      },
+      {
+        "direction": "incoming",
+        "id": "weakness:9cc29804-189f-488b-bd76-abf3ebdbf8b3",
+        "label": "Response orchestration is incomplete for under-instrumented techniques",
+        "properties": {
+          "affected_layer": "response",
+          "architectural_impact": "Even when future telemetry is added, affected stages need response routing and playbook coverage to reduce dwell time.",
+          "severity": "medium",
+          "status": "recommendation_only",
+          "weakness_type": "response_orchestration_gap"
+        },
+        "relationship_type": "weakens",
+        "type": "Architecture Weakness"
+      },
+      {
+        "direction": "incoming",
+        "id": "attack-chain:sim-full-lifecycle-001",
+        "label": "sim-full-lifecycle-001",
+        "properties": {
+          "chain_severity": "critical",
+          "phase_sequence": [
+            "recon",
+            "recon",
+            "credential_access",
+            "post-auth",
+            "post-auth"
+          ],
+          "technique_sequence": [
+            "T1046",
+            "T1046",
+            "T1110",
+            "T1078",
+            "T1087"
+          ],
+          "undetected_techniques": [
+            "T1078",
+            "T1087"
+          ]
+        },
+        "relationship_type": "relates_to",
+        "type": "Attack Chain"
+      },
+      {
+        "direction": "incoming",
+        "id": "event:64ef7517-c6bf-419f-99d1-2c6d93984694",
+        "label": "lab.event",
+        "properties": {
+          "normalized_context": {
+            "attack_step": "valid_account",
+            "lab_id": "sim-full-lifecycle-001"
+          },
+          "severity": "info",
+          "source_system": "lab",
+          "timestamp": "2026-06-01T18:43:55.323626+00:00"
+        },
+        "relationship_type": "relates_to",
+        "type": "Event"
+      },
+      {
+        "direction": "incoming",
+        "id": "mitre:T1087",
+        "label": "T1087 Account Discovery",
+        "properties": {
+          "tactic": "Discovery",
+          "technique_id": "T1087",
+          "technique_name": "Account Discovery"
+        },
+        "relationship_type": "caused_by",
+        "type": "MITRE Technique"
+      },
+      {
+        "direction": "outgoing",
+        "id": "mitre:T1110",
+        "label": "T1110 Brute Force",
+        "properties": {
+          "tactic": "Credential Access",
+          "technique_id": "T1110",
+          "technique_name": "Brute Force"
+        },
+        "relationship_type": "caused_by",
+        "type": "MITRE Technique"
+      },
+      {
+        "direction": "incoming",
+        "id": "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9",
+        "label": "top_defensive_actions",
+        "properties": {
+          "failure_modes": [
+            "add_detection_backlog_item",
+            "add_detection_backlog_item"
+          ],
+          "occurrence_count": 2,
+          "pattern_type": "defensive_decision_focus",
+          "recommended_focus": "Track whether top defensive recommendations reduce future chain risk.",
+          "status": "memory_only"
+        },
+        "relationship_type": "previously_seen_as",
+        "type": "Memory Entry"
+      },
+      {
+        "direction": "incoming",
+        "id": "memory:9a0bee3a-981c-4219-9211-ef546676c845",
+        "label": "sim-full-lifecycle-001:undetected:T1078,T1087",
+        "properties": {
+          "failure_modes": [
+            "telemetry_blind_spot",
+            "missing_transition_visibility"
+          ],
+          "occurrence_count": 1,
+          "pattern_type": "attack_failure_combination",
+          "recommended_focus": "Reduce modeled chain success probability through visibility and response coverage for T1078, T1087.",
+          "status": "memory_only:risk_score=75"
+        },
+        "relationship_type": "previously_seen_as",
+        "type": "Memory Entry"
+      },
+      {
+        "direction": "incoming",
+        "id": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf",
+        "label": "phase:post-auth",
+        "properties": {
+          "failure_modes": [
+            "missing_chain_correlation",
+            "missing_detection",
+            "weak_response_coverage"
+          ],
+          "occurrence_count": 2,
+          "pattern_type": "recurring_phase_weakness",
+          "recommended_focus": "Prioritize analyst-reviewed coverage improvements for post-auth activity.",
+          "status": "memory_only"
+        },
+        "relationship_type": "previously_seen_as",
+        "type": "Memory Entry"
+      }
+    ],
+    "similar_incidents": [
+      {
+        "id": "event:922f1238-6fdb-4bb0-ac56-7905619813db",
+        "label": "lab.event",
+        "properties": {
+          "normalized_context": {
+            "attack_step": "password_spray",
+            "lab_id": "sim-full-lifecycle-001"
+          },
+          "severity": "info",
+          "source_system": "lab",
+          "timestamp": "2026-06-01T18:43:55.323568+00:00"
+        },
+        "shared_techniques": [
+          {
+            "id": "mitre:T1110",
+            "label": "T1110 Brute Force",
+            "properties": {
+              "tactic": "Credential Access",
+              "technique_id": "T1110",
+              "technique_name": "Brute Force"
+            },
+            "type": "MITRE Technique"
+          }
+        ],
+        "similarity_reason": "Shares MITRE technique context with the source event.",
+        "type": "Event"
+      },
+      {
+        "id": "event:a8069383-7e66-4898-b88f-cb4baad87f9b",
+        "label": "playbook.selected",
+        "properties": {
+          "normalized_context": {
+            "playbook_path": "playbooks/account-lockout.md",
+            "priority": "high",
+            "reason": "Repeated Windows authentication failures indicate a brute-force attempt.",
+            "route_id": "route.windows_bruteforce.account_lockout",
+            "source_detection": "SOC-WIN-AUTH-BRUTEFORCE-001"
+          },
+          "severity": "high",
+          "source_system": "huginn",
+          "timestamp": "2026-06-01T18:43:55.323920+00:00"
+        },
+        "shared_techniques": [
+          {
+            "id": "mitre:T1110",
+            "label": "T1110 Brute Force",
+            "properties": {
+              "tactic": "Credential Access",
+              "technique_id": "T1110",
+              "technique_name": "Brute Force"
+            },
+            "type": "MITRE Technique"
+          }
+        ],
+        "similarity_reason": "Shares MITRE technique context with the source event.",
+        "type": "Event"
+      }
+    ]
+  },
+  "schema_version": "1.0"
+}

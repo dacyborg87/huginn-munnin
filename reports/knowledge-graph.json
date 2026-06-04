@@ -1,0 +1,972 @@
+{
+  "nodes": [
+    {
+      "id": "attack-chain:sim-full-lifecycle-001",
+      "label": "sim-full-lifecycle-001",
+      "properties": {
+        "chain_severity": "critical",
+        "phase_sequence": [
+          "recon",
+          "recon",
+          "credential_access",
+          "post-auth",
+          "post-auth"
+        ],
+        "technique_sequence": [
+          "T1046",
+          "T1046",
+          "T1110",
+          "T1078",
+          "T1087"
+        ],
+        "undetected_techniques": [
+          "T1078",
+          "T1087"
+        ]
+      },
+      "type": "Attack Chain"
+    },
+    {
+      "id": "event:04039a38-796f-4252-9965-cb6339d0b434",
+      "label": "defense_design.recommendations_created",
+      "properties": {
+        "normalized_context": {
+          "design_areas": [
+            "attack_surface_instrumentation",
+            "correlation_architecture",
+            "response_architecture",
+            "telemetry_layer"
+          ],
+          "recommendation_count": 4
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:51:09.130619+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:04c6e2cc-ae01-414d-9439-4e23ff4d42d5",
+      "label": "defense_complexity.analysis_created",
+      "properties": {
+        "normalized_context": {
+          "insight_count": 2,
+          "medium_or_higher_count": 1
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:51:09.131081+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:0a55ecdd-c086-4171-9ae0-bbcb94ea4e3e",
+      "label": "gap.prioritized",
+      "properties": {
+        "normalized_context": {
+          "gap_count": 2,
+          "top_gap": "T1078",
+          "top_gap_severity": "critical"
+        },
+        "severity": "info",
+        "source_system": "muninn",
+        "timestamp": "2026-06-01T19:13:28.290234+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:0c2fac32-a793-474e-b706-32eba161842e",
+      "label": "detection.alert",
+      "properties": {
+        "normalized_context": {
+          "detection_name": "SOC-WIN-AUTH-BRUTEFORCE-001",
+          "source_ip": "10.10.10.50",
+          "target_account": "lab.user",
+          "target_host": "windows-lab-01"
+        },
+        "severity": "high",
+        "source_system": "wazuh",
+        "timestamp": "2026-06-01T18:43:55.323840+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:14c17112-c530-4580-9591-6c80465b2d31",
+      "label": "defense.priorities_created",
+      "properties": {
+        "normalized_context": {
+          "action_count": 2,
+          "top_action": "defense.add_detection_backlog_item.t1078",
+          "top_priority_score": 18.55
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:21:18.139899+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:17a326f0-41d8-44dd-9a25-3fc3f1c7399f",
+      "label": "lab.event",
+      "properties": {
+        "normalized_context": {
+          "attack_step": "post_auth_discovery",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "severity": "info",
+        "source_system": "lab",
+        "timestamp": "2026-06-01T18:43:55.323679+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:23ae52a6-7b47-48db-8e7e-831c6fa8d2ff",
+      "label": "detection.alert",
+      "properties": {
+        "normalized_context": {
+          "detection_name": "SOC-NET-SMB-PROBE-001",
+          "source_ip": "10.10.10.50",
+          "target_host": "windows-lab-01"
+        },
+        "severity": "medium",
+        "source_system": "suricata",
+        "timestamp": "2026-06-01T18:43:55.323731+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:3accc2fe-02e8-477c-a63a-224a3f0bb407",
+      "label": "attack_surface.model_created",
+      "properties": {
+        "normalized_context": {
+          "critical_layers": [
+            "post-auth"
+          ],
+          "under_instrumented_layers": [
+            "post-auth"
+          ]
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:51:09.130274+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:4166d6a5-d269-41db-99de-2918d98344fb",
+      "label": "coverage_matrix.created",
+      "properties": {
+        "normalized_context": {
+          "correlated_count": 2,
+          "detected_count": 2,
+          "technique_count": 4
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:13:28.289342+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:57847868-cc74-4cb3-be74-7550a78a1c01",
+      "label": "gap.finding_recorded",
+      "properties": {
+        "normalized_context": {
+          "finding_type": "missed_lab_detection",
+          "recommendation": "Create a manually reviewed detection engineering backlog item for this technique. Do not auto-modify existing rules.",
+          "status": "logged_only",
+          "title": "Lab activity for T1078 has no matching detection event"
+        },
+        "severity": "medium",
+        "source_system": "muninn",
+        "timestamp": "2026-06-01T18:43:55.324945+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:64ef7517-c6bf-419f-99d1-2c6d93984694",
+      "label": "lab.event",
+      "properties": {
+        "normalized_context": {
+          "attack_step": "valid_account",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "severity": "info",
+        "source_system": "lab",
+        "timestamp": "2026-06-01T18:43:55.323626+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:6f2b7162-515f-4bcf-9beb-646284a597cf",
+      "label": "strategic_memory.updated",
+      "properties": {
+        "normalized_context": {
+          "pattern_count": 3,
+          "pattern_types": [
+            "attack_failure_combination",
+            "defensive_decision_focus",
+            "recurring_phase_weakness"
+          ]
+        },
+        "severity": "info",
+        "source_system": "muninn",
+        "timestamp": "2026-06-01T19:39:43.336663+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:7158724d-5507-4d29-9155-f2d916e0c1b4",
+      "label": "defense.evolution_metrics_created",
+      "properties": {
+        "normalized_context": {
+          "detection_coverage_ratio": 0.5,
+          "gap_closure_rate": 0.0,
+          "highest_attack_success_probability": 0.75,
+          "open_gap_count": 2
+        },
+        "severity": "info",
+        "source_system": "muninn",
+        "timestamp": "2026-06-01T19:39:43.338558+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:82ebe88f-bff7-47db-ae6d-cedd18e507bf",
+      "label": "metrics.report_created",
+      "properties": {
+        "normalized_context": {
+          "coverage_ratio": 0.5,
+          "false_positive_ratio": 0.0,
+          "mean_detection_to_response_seconds": 0.0001
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T18:43:55.324663+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:85588e95-523f-4d8f-9f5f-c77d872ff3a1",
+      "label": "attack_success_model.created",
+      "properties": {
+        "normalized_context": {
+          "chain_count": 1,
+          "highest_risk_chain": "sim-full-lifecycle-001",
+          "highest_risk_score": 75
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:21:18.139665+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:922f1238-6fdb-4bb0-ac56-7905619813db",
+      "label": "lab.event",
+      "properties": {
+        "normalized_context": {
+          "attack_step": "password_spray",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "severity": "info",
+        "source_system": "lab",
+        "timestamp": "2026-06-01T18:43:55.323568+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:9356fb59-9823-4443-a011-fe6f1c4d6b68",
+      "label": "attack_success_model.created",
+      "properties": {
+        "normalized_context": {
+          "chain_count": 1,
+          "highest_risk_chain": "sim-full-lifecycle-001",
+          "highest_risk_score": 75
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:21:18.138223+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:a8069383-7e66-4898-b88f-cb4baad87f9b",
+      "label": "playbook.selected",
+      "properties": {
+        "normalized_context": {
+          "playbook_path": "playbooks/account-lockout.md",
+          "priority": "high",
+          "reason": "Repeated Windows authentication failures indicate a brute-force attempt.",
+          "route_id": "route.windows_bruteforce.account_lockout",
+          "source_detection": "SOC-WIN-AUTH-BRUTEFORCE-001"
+        },
+        "severity": "high",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T18:43:55.323920+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:a975edd6-0d21-424c-9e7f-38cce4fa0638",
+      "label": "strategic_memory.updated",
+      "properties": {
+        "normalized_context": {
+          "pattern_count": 3,
+          "pattern_types": [
+            "attack_failure_combination",
+            "defensive_decision_focus",
+            "recurring_phase_weakness"
+          ]
+        },
+        "severity": "info",
+        "source_system": "muninn",
+        "timestamp": "2026-06-01T19:39:43.337693+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:acebfe77-fe67-44f5-a106-a5cebcf05ae0",
+      "label": "defense.plan_created",
+      "properties": {
+        "normalized_context": {
+          "action_count": 2,
+          "top_action": "defense.add_detection_backlog_item.t1078",
+          "top_technique": "T1078"
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:21:18.140109+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:baf338df-06a6-409c-881e-637cc5d8f826",
+      "label": "defense.priorities_created",
+      "properties": {
+        "normalized_context": {
+          "action_count": 2,
+          "top_action": "defense.add_detection_backlog_item.t1078",
+          "top_priority_score": 18.55
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:21:18.139261+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:c26d5d4e-6eaf-41ea-ac97-938661e6b480",
+      "label": "attack_chain.report_created",
+      "properties": {
+        "normalized_context": {
+          "chain_count": 1,
+          "critical_chain_count": 1
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:13:28.287963+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:d173a05c-c288-4fd0-93f3-4dd134803bd8",
+      "label": "playbook.selected",
+      "properties": {
+        "normalized_context": {
+          "playbook_path": "playbooks/network-containment.md",
+          "priority": "medium",
+          "reason": "SMB probing may indicate discovery or lateral movement preparation.",
+          "route_id": "route.smb_probe.network_containment",
+          "source_detection": "SOC-NET-SMB-PROBE-001"
+        },
+        "severity": "medium",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T18:43:55.323788+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:d2fe3656-5e49-472e-ab56-57f500cf4bd4",
+      "label": "lab.event",
+      "properties": {
+        "normalized_context": {
+          "attack_step": "smb_probe",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "severity": "info",
+        "source_system": "lab",
+        "timestamp": "2026-06-01T18:43:55.323491+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:e7d61544-4f01-46e0-9a2f-236d926cf393",
+      "label": "defense.learning_insights_created",
+      "properties": {
+        "normalized_context": {
+          "critical_count": 1,
+          "high_count": 3,
+          "insight_count": 5
+        },
+        "severity": "info",
+        "source_system": "muninn",
+        "timestamp": "2026-06-01T19:39:43.338132+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:ea6450bd-a378-4643-bf43-3dacb0c5b31b",
+      "label": "security_architecture.analysis_created",
+      "properties": {
+        "normalized_context": {
+          "affected_layers": [
+            "correlation",
+            "post-auth",
+            "response"
+          ],
+          "critical_count": 1,
+          "weakness_count": 3
+        },
+        "severity": "info",
+        "source_system": "huginn",
+        "timestamp": "2026-06-01T19:51:09.128907+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:ebdda74a-ac2e-497c-b4de-bdb4edad1a09",
+      "label": "gap.finding_recorded",
+      "properties": {
+        "normalized_context": {
+          "finding_type": "missed_lab_detection",
+          "recommendation": "Create a manually reviewed detection engineering backlog item for this technique. Do not auto-modify existing rules.",
+          "status": "logged_only",
+          "title": "Lab activity for T1087 has no matching detection event"
+        },
+        "severity": "medium",
+        "source_system": "muninn",
+        "timestamp": "2026-06-01T18:43:55.325046+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "event:f26fa03a-6c8e-44ca-b906-12c974dcbcbf",
+      "label": "lab.event",
+      "properties": {
+        "normalized_context": {
+          "attack_step": "recon",
+          "lab_id": "sim-full-lifecycle-001"
+        },
+        "severity": "info",
+        "source_system": "lab",
+        "timestamp": "2026-06-01T18:43:55.322568+00:00"
+      },
+      "type": "Event"
+    },
+    {
+      "id": "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9",
+      "label": "top_defensive_actions",
+      "properties": {
+        "failure_modes": [
+          "add_detection_backlog_item",
+          "add_detection_backlog_item"
+        ],
+        "occurrence_count": 2,
+        "pattern_type": "defensive_decision_focus",
+        "recommended_focus": "Track whether top defensive recommendations reduce future chain risk.",
+        "status": "memory_only"
+      },
+      "type": "Memory Entry"
+    },
+    {
+      "id": "memory:9a0bee3a-981c-4219-9211-ef546676c845",
+      "label": "sim-full-lifecycle-001:undetected:T1078,T1087",
+      "properties": {
+        "failure_modes": [
+          "telemetry_blind_spot",
+          "missing_transition_visibility"
+        ],
+        "occurrence_count": 1,
+        "pattern_type": "attack_failure_combination",
+        "recommended_focus": "Reduce modeled chain success probability through visibility and response coverage for T1078, T1087.",
+        "status": "memory_only:risk_score=75"
+      },
+      "type": "Memory Entry"
+    },
+    {
+      "id": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf",
+      "label": "phase:post-auth",
+      "properties": {
+        "failure_modes": [
+          "missing_chain_correlation",
+          "missing_detection",
+          "weak_response_coverage"
+        ],
+        "occurrence_count": 2,
+        "pattern_type": "recurring_phase_weakness",
+        "recommended_focus": "Prioritize analyst-reviewed coverage improvements for post-auth activity.",
+        "status": "memory_only"
+      },
+      "type": "Memory Entry"
+    },
+    {
+      "id": "mitre:T1046",
+      "label": "T1046 Network Service Discovery",
+      "properties": {
+        "tactic": "Discovery",
+        "technique_id": "T1046",
+        "technique_name": "Network Service Discovery"
+      },
+      "type": "MITRE Technique"
+    },
+    {
+      "id": "mitre:T1078",
+      "label": "T1078 Valid Accounts",
+      "properties": {
+        "tactic": "Defense Evasion",
+        "technique_id": "T1078",
+        "technique_name": "Valid Accounts"
+      },
+      "type": "MITRE Technique"
+    },
+    {
+      "id": "mitre:T1087",
+      "label": "T1087 Account Discovery",
+      "properties": {
+        "tactic": "Discovery",
+        "technique_id": "T1087",
+        "technique_name": "Account Discovery"
+      },
+      "type": "MITRE Technique"
+    },
+    {
+      "id": "mitre:T1110",
+      "label": "T1110 Brute Force",
+      "properties": {
+        "tactic": "Credential Access",
+        "technique_id": "T1110",
+        "technique_name": "Brute Force"
+      },
+      "type": "MITRE Technique"
+    },
+    {
+      "id": "recommendation:design.chain_correlation_service",
+      "label": "Add an attack-chain correlation service",
+      "properties": {
+        "architectural_change": "Maintain sliding windows of related source, account, host, and MITRE stage context so isolated detections become chain-aware decisions.",
+        "design_area": "correlation_architecture",
+        "expected_outcome": "Increase correlation across attack stages and reduce missed transitions.",
+        "recommended_subsystem": "Chain correlation service",
+        "status": "recommendation_only"
+      },
+      "type": "Defense Recommendation"
+    },
+    {
+      "id": "recommendation:design.post_auth_telemetry_layer",
+      "label": "Add a post-auth telemetry enrichment layer",
+      "properties": {
+        "architectural_change": "Introduce a subsystem that normalizes successful logon context, session activity, account enumeration, and follow-on host discovery into canonical SOC events.",
+        "design_area": "telemetry_layer",
+        "expected_outcome": "Reduce blind spots after credential access and support chain disruption before lateral movement.",
+        "recommended_subsystem": "Post-auth activity monitor",
+        "status": "recommendation_only"
+      },
+      "type": "Defense Recommendation"
+    },
+    {
+      "id": "recommendation:design.response_orchestration_index",
+      "label": "Create a response coverage index",
+      "properties": {
+        "architectural_change": "Track which MITRE stages have response playbook coverage, expected evidence, and escalation criteria.",
+        "design_area": "response_architecture",
+        "expected_outcome": "Expose response gaps before new detections are promoted.",
+        "recommended_subsystem": "Response orchestration index",
+        "status": "recommendation_only"
+      },
+      "type": "Defense Recommendation"
+    },
+    {
+      "id": "recommendation:design.surface_instrumentation.post-auth",
+      "label": "Improve post-auth attack surface instrumentation",
+      "properties": {
+        "architectural_change": "Define required telemetry, correlation keys, response coverage, and evidence expectations for this attack surface layer.",
+        "design_area": "attack_surface_instrumentation",
+        "expected_outcome": "Raise instrumentation score and reduce modeled attack success probability.",
+        "recommended_subsystem": "post-auth instrumentation map",
+        "status": "recommendation_only"
+      },
+      "type": "Defense Recommendation"
+    },
+    {
+      "id": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "label": "Post-auth activity lacks architectural visibility and response coverage",
+      "properties": {
+        "affected_layer": "post-auth",
+        "architectural_impact": "The system can detect early discovery and brute force activity, but loses visibility after credential use, allowing a chain to progress without correlated containment.",
+        "severity": "critical",
+        "status": "recommendation_only",
+        "weakness_type": "post_auth_visibility_gap"
+      },
+      "type": "Architecture Weakness"
+    },
+    {
+      "id": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576",
+      "label": "Attack stages are not consistently linked into a defensive chain model",
+      "properties": {
+        "affected_layer": "correlation",
+        "architectural_impact": "Isolated detections can route playbooks, but incomplete transition visibility limits chain-level disruption decisions.",
+        "severity": "high",
+        "status": "recommendation_only",
+        "weakness_type": "chain_correlation_gap"
+      },
+      "type": "Architecture Weakness"
+    },
+    {
+      "id": "weakness:9cc29804-189f-488b-bd76-abf3ebdbf8b3",
+      "label": "Response orchestration is incomplete for under-instrumented techniques",
+      "properties": {
+        "affected_layer": "response",
+        "architectural_impact": "Even when future telemetry is added, affected stages need response routing and playbook coverage to reduce dwell time.",
+        "severity": "medium",
+        "status": "recommendation_only",
+        "weakness_type": "response_orchestration_gap"
+      },
+      "type": "Architecture Weakness"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "attack-chain:sim-full-lifecycle-001:relates_to:event:17a326f0-41d8-44dd-9a25-3fc3f1c7399f",
+      "properties": {},
+      "source": "attack-chain:sim-full-lifecycle-001",
+      "target": "event:17a326f0-41d8-44dd-9a25-3fc3f1c7399f",
+      "type": "relates_to"
+    },
+    {
+      "id": "attack-chain:sim-full-lifecycle-001:relates_to:event:64ef7517-c6bf-419f-99d1-2c6d93984694",
+      "properties": {},
+      "source": "attack-chain:sim-full-lifecycle-001",
+      "target": "event:64ef7517-c6bf-419f-99d1-2c6d93984694",
+      "type": "relates_to"
+    },
+    {
+      "id": "attack-chain:sim-full-lifecycle-001:relates_to:event:922f1238-6fdb-4bb0-ac56-7905619813db",
+      "properties": {},
+      "source": "attack-chain:sim-full-lifecycle-001",
+      "target": "event:922f1238-6fdb-4bb0-ac56-7905619813db",
+      "type": "relates_to"
+    },
+    {
+      "id": "attack-chain:sim-full-lifecycle-001:relates_to:event:d2fe3656-5e49-472e-ab56-57f500cf4bd4",
+      "properties": {},
+      "source": "attack-chain:sim-full-lifecycle-001",
+      "target": "event:d2fe3656-5e49-472e-ab56-57f500cf4bd4",
+      "type": "relates_to"
+    },
+    {
+      "id": "attack-chain:sim-full-lifecycle-001:relates_to:event:f26fa03a-6c8e-44ca-b906-12c974dcbcbf",
+      "properties": {},
+      "source": "attack-chain:sim-full-lifecycle-001",
+      "target": "event:f26fa03a-6c8e-44ca-b906-12c974dcbcbf",
+      "type": "relates_to"
+    },
+    {
+      "id": "attack-chain:sim-full-lifecycle-001:relates_to:mitre:T1046",
+      "properties": {},
+      "source": "attack-chain:sim-full-lifecycle-001",
+      "target": "mitre:T1046",
+      "type": "relates_to"
+    },
+    {
+      "id": "attack-chain:sim-full-lifecycle-001:relates_to:mitre:T1078",
+      "properties": {},
+      "source": "attack-chain:sim-full-lifecycle-001",
+      "target": "mitre:T1078",
+      "type": "relates_to"
+    },
+    {
+      "id": "attack-chain:sim-full-lifecycle-001:relates_to:mitre:T1087",
+      "properties": {},
+      "source": "attack-chain:sim-full-lifecycle-001",
+      "target": "mitre:T1087",
+      "type": "relates_to"
+    },
+    {
+      "id": "attack-chain:sim-full-lifecycle-001:relates_to:mitre:T1110",
+      "properties": {},
+      "source": "attack-chain:sim-full-lifecycle-001",
+      "target": "mitre:T1110",
+      "type": "relates_to"
+    },
+    {
+      "id": "event:0c2fac32-a793-474e-b706-32eba161842e:relates_to:mitre:T1110",
+      "properties": {},
+      "source": "event:0c2fac32-a793-474e-b706-32eba161842e",
+      "target": "mitre:T1110",
+      "type": "relates_to"
+    },
+    {
+      "id": "event:17a326f0-41d8-44dd-9a25-3fc3f1c7399f:relates_to:mitre:T1087",
+      "properties": {},
+      "source": "event:17a326f0-41d8-44dd-9a25-3fc3f1c7399f",
+      "target": "mitre:T1087",
+      "type": "relates_to"
+    },
+    {
+      "id": "event:23ae52a6-7b47-48db-8e7e-831c6fa8d2ff:relates_to:mitre:T1046",
+      "properties": {},
+      "source": "event:23ae52a6-7b47-48db-8e7e-831c6fa8d2ff",
+      "target": "mitre:T1046",
+      "type": "relates_to"
+    },
+    {
+      "id": "event:64ef7517-c6bf-419f-99d1-2c6d93984694:relates_to:mitre:T1078",
+      "properties": {},
+      "source": "event:64ef7517-c6bf-419f-99d1-2c6d93984694",
+      "target": "mitre:T1078",
+      "type": "relates_to"
+    },
+    {
+      "id": "event:922f1238-6fdb-4bb0-ac56-7905619813db:relates_to:mitre:T1110",
+      "properties": {},
+      "source": "event:922f1238-6fdb-4bb0-ac56-7905619813db",
+      "target": "mitre:T1110",
+      "type": "relates_to"
+    },
+    {
+      "id": "event:a8069383-7e66-4898-b88f-cb4baad87f9b:relates_to:mitre:T1110",
+      "properties": {},
+      "source": "event:a8069383-7e66-4898-b88f-cb4baad87f9b",
+      "target": "mitre:T1110",
+      "type": "relates_to"
+    },
+    {
+      "id": "event:d173a05c-c288-4fd0-93f3-4dd134803bd8:relates_to:mitre:T1046",
+      "properties": {},
+      "source": "event:d173a05c-c288-4fd0-93f3-4dd134803bd8",
+      "target": "mitre:T1046",
+      "type": "relates_to"
+    },
+    {
+      "id": "event:d2fe3656-5e49-472e-ab56-57f500cf4bd4:relates_to:mitre:T1046",
+      "properties": {},
+      "source": "event:d2fe3656-5e49-472e-ab56-57f500cf4bd4",
+      "target": "mitre:T1046",
+      "type": "relates_to"
+    },
+    {
+      "id": "event:f26fa03a-6c8e-44ca-b906-12c974dcbcbf:relates_to:mitre:T1046",
+      "properties": {},
+      "source": "event:f26fa03a-6c8e-44ca-b906-12c974dcbcbf",
+      "target": "mitre:T1046",
+      "type": "relates_to"
+    },
+    {
+      "id": "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9:previously_seen_as:attack-chain:sim-full-lifecycle-001",
+      "properties": {},
+      "source": "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9",
+      "target": "attack-chain:sim-full-lifecycle-001",
+      "type": "previously_seen_as"
+    },
+    {
+      "id": "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9:previously_seen_as:mitre:T1078",
+      "properties": {},
+      "source": "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9",
+      "target": "mitre:T1078",
+      "type": "previously_seen_as"
+    },
+    {
+      "id": "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9:previously_seen_as:mitre:T1087",
+      "properties": {},
+      "source": "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9",
+      "target": "mitre:T1087",
+      "type": "previously_seen_as"
+    },
+    {
+      "id": "memory:9a0bee3a-981c-4219-9211-ef546676c845:previously_seen_as:attack-chain:sim-full-lifecycle-001",
+      "properties": {},
+      "source": "memory:9a0bee3a-981c-4219-9211-ef546676c845",
+      "target": "attack-chain:sim-full-lifecycle-001",
+      "type": "previously_seen_as"
+    },
+    {
+      "id": "memory:9a0bee3a-981c-4219-9211-ef546676c845:previously_seen_as:mitre:T1078",
+      "properties": {},
+      "source": "memory:9a0bee3a-981c-4219-9211-ef546676c845",
+      "target": "mitre:T1078",
+      "type": "previously_seen_as"
+    },
+    {
+      "id": "memory:9a0bee3a-981c-4219-9211-ef546676c845:previously_seen_as:mitre:T1087",
+      "properties": {},
+      "source": "memory:9a0bee3a-981c-4219-9211-ef546676c845",
+      "target": "mitre:T1087",
+      "type": "previously_seen_as"
+    },
+    {
+      "id": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf:previously_seen_as:attack-chain:sim-full-lifecycle-001",
+      "properties": {},
+      "source": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf",
+      "target": "attack-chain:sim-full-lifecycle-001",
+      "type": "previously_seen_as"
+    },
+    {
+      "id": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf:previously_seen_as:mitre:T1078",
+      "properties": {},
+      "source": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf",
+      "target": "mitre:T1078",
+      "type": "previously_seen_as"
+    },
+    {
+      "id": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf:previously_seen_as:mitre:T1087",
+      "properties": {},
+      "source": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf",
+      "target": "mitre:T1087",
+      "type": "previously_seen_as"
+    },
+    {
+      "id": "mitre:T1078:caused_by:mitre:T1110",
+      "properties": {
+        "detected_transition": false,
+        "from_phase": "credential_access",
+        "reason": "One or both adjacent chain stages lack detection coverage.",
+        "to_phase": "post-auth"
+      },
+      "source": "mitre:T1078",
+      "target": "mitre:T1110",
+      "type": "caused_by"
+    },
+    {
+      "id": "mitre:T1087:caused_by:mitre:T1078",
+      "properties": {
+        "detected_transition": false,
+        "from_phase": "post-auth",
+        "reason": "One or both adjacent chain stages lack detection coverage.",
+        "to_phase": "post-auth"
+      },
+      "source": "mitre:T1087",
+      "target": "mitre:T1078",
+      "type": "caused_by"
+    },
+    {
+      "id": "recommendation:design.chain_correlation_service:recommends:weakness:72f28a3e-9cd6-4559-9859-a5c091d28576",
+      "properties": {},
+      "source": "recommendation:design.chain_correlation_service",
+      "target": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576",
+      "type": "recommends"
+    },
+    {
+      "id": "recommendation:design.post_auth_telemetry_layer:recommends:weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "properties": {},
+      "source": "recommendation:design.post_auth_telemetry_layer",
+      "target": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "type": "recommends"
+    },
+    {
+      "id": "recommendation:design.response_orchestration_index:recommends:weakness:9cc29804-189f-488b-bd76-abf3ebdbf8b3",
+      "properties": {},
+      "source": "recommendation:design.response_orchestration_index",
+      "target": "weakness:9cc29804-189f-488b-bd76-abf3ebdbf8b3",
+      "type": "recommends"
+    },
+    {
+      "id": "recommendation:design.surface_instrumentation.post-auth:recommends:weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "properties": {},
+      "source": "recommendation:design.surface_instrumentation.post-auth",
+      "target": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "type": "recommends"
+    },
+    {
+      "id": "weakness:15953a2c-3b98-4640-9401-1306f95162e3:caused_by:memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf",
+      "properties": {},
+      "source": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "target": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf",
+      "type": "caused_by"
+    },
+    {
+      "id": "weakness:15953a2c-3b98-4640-9401-1306f95162e3:weakens:attack-chain:sim-full-lifecycle-001",
+      "properties": {},
+      "source": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "target": "attack-chain:sim-full-lifecycle-001",
+      "type": "weakens"
+    },
+    {
+      "id": "weakness:15953a2c-3b98-4640-9401-1306f95162e3:weakens:mitre:T1078",
+      "properties": {},
+      "source": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "target": "mitre:T1078",
+      "type": "weakens"
+    },
+    {
+      "id": "weakness:15953a2c-3b98-4640-9401-1306f95162e3:weakens:mitre:T1087",
+      "properties": {},
+      "source": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "target": "mitre:T1087",
+      "type": "weakens"
+    },
+    {
+      "id": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576:weakens:mitre:T1078",
+      "properties": {
+        "transition_context": {
+          "detected_transition": false,
+          "from_phase": "post-auth",
+          "from_technique": "T1078",
+          "reason": "One or both adjacent chain stages lack detection coverage.",
+          "to_phase": "post-auth",
+          "to_technique": "T1087"
+        }
+      },
+      "source": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576",
+      "target": "mitre:T1078",
+      "type": "weakens"
+    },
+    {
+      "id": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576:weakens:mitre:T1087",
+      "properties": {
+        "transition_context": {
+          "detected_transition": false,
+          "from_phase": "post-auth",
+          "from_technique": "T1078",
+          "reason": "One or both adjacent chain stages lack detection coverage.",
+          "to_phase": "post-auth",
+          "to_technique": "T1087"
+        }
+      },
+      "source": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576",
+      "target": "mitre:T1087",
+      "type": "weakens"
+    },
+    {
+      "id": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576:weakens:mitre:T1110",
+      "properties": {
+        "transition_context": {
+          "detected_transition": false,
+          "from_phase": "credential_access",
+          "from_technique": "T1110",
+          "reason": "One or both adjacent chain stages lack detection coverage.",
+          "to_phase": "post-auth",
+          "to_technique": "T1078"
+        }
+      },
+      "source": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576",
+      "target": "mitre:T1110",
+      "type": "weakens"
+    },
+    {
+      "id": "weakness:9cc29804-189f-488b-bd76-abf3ebdbf8b3:weakens:mitre:T1078",
+      "properties": {},
+      "source": "weakness:9cc29804-189f-488b-bd76-abf3ebdbf8b3",
+      "target": "mitre:T1078",
+      "type": "weakens"
+    },
+    {
+      "id": "weakness:9cc29804-189f-488b-bd76-abf3ebdbf8b3:weakens:mitre:T1087",
+      "properties": {},
+      "source": "weakness:9cc29804-189f-488b-bd76-abf3ebdbf8b3",
+      "target": "mitre:T1087",
+      "type": "weakens"
+    }
+  ],
+  "schema_version": "1.0"
+}

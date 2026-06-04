@@ -1,0 +1,82 @@
+{
+  "node_counts": {
+    "Architecture Weakness": 3,
+    "Attack Chain": 1,
+    "Defense Recommendation": 4,
+    "Event": 28,
+    "MITRE Technique": 4,
+    "Memory Entry": 3
+  },
+  "relationship_counts": {
+    "caused_by": 3,
+    "previously_seen_as": 9,
+    "recommends": 4,
+    "relates_to": 18,
+    "weakens": 8
+  },
+  "schema_version": "1.0",
+  "top_connected_entities": [
+    {
+      "connection_count": 13,
+      "id": "attack-chain:sim-full-lifecycle-001",
+      "label": "sim-full-lifecycle-001",
+      "type": "Attack Chain"
+    },
+    {
+      "connection_count": 10,
+      "id": "mitre:T1078",
+      "label": "T1078 Valid Accounts",
+      "type": "MITRE Technique"
+    },
+    {
+      "connection_count": 9,
+      "id": "mitre:T1087",
+      "label": "T1087 Account Discovery",
+      "type": "MITRE Technique"
+    },
+    {
+      "connection_count": 6,
+      "id": "mitre:T1110",
+      "label": "T1110 Brute Force",
+      "type": "MITRE Technique"
+    },
+    {
+      "connection_count": 6,
+      "id": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "label": "Post-auth activity lacks architectural visibility and response coverage",
+      "type": "Architecture Weakness"
+    },
+    {
+      "connection_count": 5,
+      "id": "mitre:T1046",
+      "label": "T1046 Network Service Discovery",
+      "type": "MITRE Technique"
+    },
+    {
+      "connection_count": 4,
+      "id": "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf",
+      "label": "phase:post-auth",
+      "type": "Memory Entry"
+    },
+    {
+      "connection_count": 4,
+      "id": "weakness:72f28a3e-9cd6-4559-9859-a5c091d28576",
+      "label": "Attack stages are not consistently linked into a defensive chain model",
+      "type": "Architecture Weakness"
+    },
+    {
+      "connection_count": 3,
+      "id": "memory:9a0bee3a-981c-4219-9211-ef546676c845",
+      "label": "sim-full-lifecycle-001:undetected:T1078,T1087",
+      "type": "Memory Entry"
+    },
+    {
+      "connection_count": 3,
+      "id": "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9",
+      "label": "top_defensive_actions",
+      "type": "Memory Entry"
+    }
+  ],
+  "total_nodes": 43,
+  "total_relationships": 42
+}

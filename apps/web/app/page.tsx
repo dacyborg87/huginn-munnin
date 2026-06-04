@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Activity, BrainCircuit, Database, Mic, Radar, Send, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type ChatAcceptedResponse = {
   status: string;
@@ -40,7 +40,43 @@ type OutcomePayload = {
   updated_weights?: Record<string, number>;
 };
 
+type GraphEntity = {
+  id: string;
+  type: string;
+  label: string;
+  connection_count?: number;
+};
+
+type GraphSummaryResponse = {
+  summary?: {
+    total_nodes?: number;
+    total_relationships?: number;
+    top_connected_entities?: GraphEntity[];
+  };
+  connected_entities?: GraphEntity[];
+  explanation?: string;
+};
+
+type GraphQueryResponse = {
+  connected_entities?: GraphEntity[];
+  weaknesses?: GraphEntity[];
+  recommendations?: GraphEntity[];
+  similar_incidents?: GraphEntity[];
+  explanation?: string;
+};
+
+type GraphPanelState = {
+  summary: GraphSummaryResponse | null;
+  related: GraphQueryResponse | null;
+  weaknesses: GraphQueryResponse | null;
+  recommendations: GraphQueryResponse | null;
+  similarIncidents: GraphQueryResponse | null;
+  status: "loading" | "ready" | "error";
+};
+
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const sampleTechniqueId = "T1078";
+const sampleEventId = "f26fa03a-6c8e-44ca-b906-12c974dcbcbf";
 
 const systems = [
   { label: "Huginn", detail: "Thought Engine", icon: BrainCircuit, status: "online" },
@@ -58,6 +94,14 @@ export default function Home() {
   );
   const [securityResult, setSecurityResult] = useState<string>("No analysis submitted.");
   const [isLoading, setIsLoading] = useState(false);
+  const [graphPanel, setGraphPanel] = useState<GraphPanelState>({
+    summary: null,
+    related: null,
+    weaknesses: null,
+    recommendations: null,
+    similarIncidents: null,
+    status: "loading",
+  });
 
   const latestDecision = events
     .slice()
@@ -88,6 +132,42 @@ export default function Home() {
     const result = await fetch(`${apiUrl}/events?limit=50`);
     setEvents(await result.json());
   }
+
+  const refreshGraphIntelligence = useCallback(async () => {
+    setGraphPanel((current) => ({ ...current, status: "loading" }));
+    try {
+      const [summary, related, weaknesses, recommendations, similarIncidents] =
+        await Promise.all([
+          fetch(`${apiUrl}/graph/summary`).then((response) => response.json()),
+          fetch(`${apiUrl}/graph/related/mitre:${sampleTechniqueId}`).then((response) =>
+            response.json(),
+          ),
+          fetch(`${apiUrl}/graph/weaknesses/${sampleTechniqueId}`).then((response) =>
+            response.json(),
+          ),
+          fetch(`${apiUrl}/graph/recommendations/${sampleTechniqueId}`).then((response) =>
+            response.json(),
+          ),
+          fetch(`${apiUrl}/graph/similar-incidents/${sampleEventId}`).then((response) =>
+            response.json(),
+          ),
+        ]);
+      setGraphPanel({
+        summary,
+        related,
+        weaknesses,
+        recommendations,
+        similarIncidents,
+        status: "ready",
+      });
+    } catch {
+      setGraphPanel((current) => ({ ...current, status: "error" }));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshGraphIntelligence();
+  }, [refreshGraphIntelligence]);
 
   async function sendChat() {
     setIsLoading(true);
@@ -340,6 +420,67 @@ export default function Home() {
 
           <div className="rounded-lg border border-command-line bg-white p-5 shadow-panel">
             <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Graph Intelligence</h2>
+              <Database className="text-command-signal" size={22} />
+            </div>
+            {graphPanel.status === "error" ? (
+              <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-700">
+                Graph Intelligence is not available. Start the API and refresh this panel.
+              </p>
+            ) : (
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-command-line bg-command-panel p-3">
+                    <p className="text-xs uppercase text-neutral-500">Total Nodes</p>
+                    <p className="mt-1 text-xl font-semibold text-command-ink">
+                      {graphPanel.summary?.summary?.total_nodes ?? "Loading"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-command-line bg-command-panel p-3">
+                    <p className="text-xs uppercase text-neutral-500">Relationships</p>
+                    <p className="mt-1 text-xl font-semibold text-command-ink">
+                      {graphPanel.summary?.summary?.total_relationships ?? "Loading"}
+                    </p>
+                  </div>
+                </div>
+
+                <GraphEntityList
+                  title="Top Connected"
+                  entities={
+                    graphPanel.summary?.summary?.top_connected_entities ??
+                    graphPanel.summary?.connected_entities ??
+                    []
+                  }
+                />
+                <GraphEntityList
+                  title={`Related to ${sampleTechniqueId}`}
+                  entities={graphPanel.related?.connected_entities ?? []}
+                />
+                <GraphEntityList
+                  title="Connected Weaknesses"
+                  entities={graphPanel.weaknesses?.weaknesses ?? []}
+                />
+                <GraphEntityList
+                  title="Recommendations"
+                  entities={graphPanel.recommendations?.recommendations ?? []}
+                />
+                <GraphEntityList
+                  title="Similar Incidents"
+                  entities={graphPanel.similarIncidents?.similar_incidents ?? []}
+                />
+
+                <button
+                  onClick={refreshGraphIntelligence}
+                  className="rounded-md border border-command-line px-3 py-2 text-sm font-medium text-neutral-700"
+                >
+                  Refresh Graph Intelligence
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-command-line bg-white p-5 shadow-panel">
+            <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Learning Loop</h2>
               <Database className="text-command-signal" size={22} />
             </div>
@@ -461,5 +602,35 @@ export default function Home() {
         </div>
       </section>
     </main>
+  );
+}
+
+function GraphEntityList({ title, entities }: { title: string; entities: GraphEntity[] }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">{title}</p>
+      {entities.length === 0 ? (
+        <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-600">
+          No graph data loaded yet.
+        </p>
+      ) : (
+        entities.slice(0, 4).map((entity) => (
+          <div key={entity.id} className="rounded-md border border-command-line p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-command-ink">{entity.label}</p>
+                <p className="mt-1 truncate text-xs text-neutral-600">{entity.id}</p>
+              </div>
+              <span className="shrink-0 text-xs uppercase text-neutral-500">{entity.type}</span>
+            </div>
+            {typeof entity.connection_count === "number" && (
+              <p className="mt-2 text-xs text-neutral-600">
+                Connections: {entity.connection_count}
+              </p>
+            )}
+          </div>
+        ))
+      )}
+    </div>
   );
 }

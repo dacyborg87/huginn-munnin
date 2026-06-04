@@ -1,11 +1,13 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.event_bus import EventBus
 from huginn_muninn_api.core.config import Settings
+from huginn_muninn_api.core.graph_intelligence_api import GraphIntelligenceApi
 from huginn_muninn_api.core.orchestrator import Orchestrator
 from huginn_muninn_api.schemas.chat import ChatAcceptedResponse, ChatRequest
 from huginn_muninn_api.schemas.events import EventLogEntry
@@ -15,6 +17,8 @@ from huginn_muninn_api.schemas.security import SecurityAnalysisRequest, Security
 settings = Settings()
 event_bus = EventBus()
 orchestrator = Orchestrator(event_bus)
+repository_root = Path(__file__).resolve().parents[4]
+graph_intelligence = GraphIntelligenceApi(repository_root)
 
 
 @asynccontextmanager
@@ -76,3 +80,28 @@ async def list_events(limit: int = 100) -> list[EventLogEntry]:
         )
         for event in events
     ]
+
+
+@app.get("/graph/summary")
+def graph_summary() -> dict:
+    return graph_intelligence.summary()
+
+
+@app.get("/graph/related/{entity_id}")
+def graph_related(entity_id: str) -> dict:
+    return graph_intelligence.related(entity_id)
+
+
+@app.get("/graph/weaknesses/{entity_id}")
+def graph_weaknesses(entity_id: str) -> dict:
+    return graph_intelligence.weaknesses(entity_id)
+
+
+@app.get("/graph/recommendations/{technique_id}")
+def graph_recommendations(technique_id: str) -> dict:
+    return graph_intelligence.recommendations(technique_id)
+
+
+@app.get("/graph/similar-incidents/{event_id}")
+def graph_similar_incidents(event_id: str) -> dict:
+    return graph_intelligence.similar_incidents(event_id)
