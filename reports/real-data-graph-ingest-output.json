@@ -1,0 +1,11 @@
+{
+  "explanation": "Normalized real-data events were added to the Knowledge Graph as Event nodes and related to MITRE Technique nodes when techniques were present.",
+  "schema_version": "1.0",
+  "summary": {
+    "duplicates_skipped": 1,
+    "events_added": 3,
+    "events_without_mitre": 1,
+    "relationships_added": 3,
+    "techniques_added": 2
+  }
+}
