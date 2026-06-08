@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.event_bus import EventBus
 from huginn_muninn_api.core.config import Settings
+from huginn_muninn_api.core.evidence_api import EvidenceApi
 from huginn_muninn_api.core.graph_intelligence_api import GraphIntelligenceApi
 from huginn_muninn_api.core.orchestrator import Orchestrator
 from huginn_muninn_api.schemas.chat import ChatAcceptedResponse, ChatRequest
@@ -19,6 +20,7 @@ event_bus = EventBus()
 orchestrator = Orchestrator(event_bus)
 repository_root = Path(__file__).resolve().parents[4]
 graph_intelligence = GraphIntelligenceApi(repository_root)
+evidence_api = EvidenceApi(repository_root)
 
 
 @asynccontextmanager
@@ -105,3 +107,33 @@ def graph_recommendations(technique_id: str) -> dict:
 @app.get("/graph/similar-incidents/{event_id}")
 def graph_similar_incidents(event_id: str) -> dict:
     return graph_intelligence.similar_incidents(event_id)
+
+
+@app.get("/evidence/summary")
+def evidence_summary() -> dict:
+    return evidence_api.summary()
+
+
+@app.get("/evidence/finding/{finding_id}")
+def evidence_by_finding(finding_id: str) -> dict:
+    return evidence_api.finding(finding_id)
+
+
+@app.get("/evidence/mitre/{technique_id}")
+def evidence_by_mitre(technique_id: str) -> dict:
+    return evidence_api.mitre(technique_id)
+
+
+@app.get("/evidence/weakness/{weakness_id}")
+def evidence_by_weakness(weakness_id: str) -> dict:
+    return evidence_api.weakness(weakness_id)
+
+
+@app.get("/evidence/recommendation/{recommendation_id}")
+def evidence_by_recommendation(recommendation_id: str) -> dict:
+    return evidence_api.recommendation(recommendation_id)
+
+
+@app.get("/evidence/confidence/{level}")
+def evidence_by_confidence(level: str) -> dict:
+    return evidence_api.confidence(level)
