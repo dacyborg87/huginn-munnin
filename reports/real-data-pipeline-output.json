@@ -1,0 +1,123 @@
+{
+  "evidence_records": [
+    {
+      "confidence": {
+        "calculation": {
+          "host_context": {
+            "value": 1.0,
+            "weight": 0.1,
+            "weighted_score": 0.1
+          },
+          "mitre_mapping": {
+            "value": 1.0,
+            "weight": 0.3,
+            "weighted_score": 0.3
+          },
+          "rule_context": {
+            "value": 1.0,
+            "weight": 0.15,
+            "weighted_score": 0.15
+          },
+          "severity_alignment": {
+            "value": 0.85,
+            "weight": 0.15,
+            "weighted_score": 0.128
+          },
+          "source_reliability": {
+            "value": 1.0,
+            "weight": 0.3,
+            "weighted_score": 0.3
+          }
+        },
+        "explanation": "Confidence is high because Wazuh rule 60122 reported severity high and included MITRE technique context.",
+        "level": "high",
+        "score": 0.978
+      },
+      "evidence_id": "evidence:real-data-event-1700000000-12345",
+      "related_entities": {
+        "architecture_weaknesses": [],
+        "attack_chains": [],
+        "defense_recommendations": [],
+        "events": [
+          "event:1700000000.12345"
+        ],
+        "memory_entries": [],
+        "mitre_techniques": [
+          "mitre:T1078",
+          "mitre:T1110"
+        ]
+      },
+      "source_path": "reports/real-data-graph-ingest-output.json",
+      "source_reference": "event:1700000000.12345",
+      "source_type": "detection_alert",
+      "summary": "event:1700000000.12345 was parsed from Wazuh rule 60122 on host windows-endpoint-01 with severity high and is linked to MITRE technique(s): mitre:T1078, mitre:T1110.",
+      "timestamp": "2026-06-08T14:22:31.000Z",
+      "title": "Evidence for Wazuh alert: Multiple Windows logon failures"
+    },
+    {
+      "confidence": {
+        "calculation": {
+          "host_context": {
+            "value": 1.0,
+            "weight": 0.1,
+            "weighted_score": 0.1
+          },
+          "mitre_mapping": {
+            "value": 0.0,
+            "weight": 0.3,
+            "weighted_score": 0.0
+          },
+          "rule_context": {
+            "value": 1.0,
+            "weight": 0.15,
+            "weighted_score": 0.15
+          },
+          "severity_alignment": {
+            "value": 0.6,
+            "weight": 0.15,
+            "weighted_score": 0.09
+          },
+          "source_reliability": {
+            "value": 1.0,
+            "weight": 0.3,
+            "weighted_score": 0.3
+          }
+        },
+        "explanation": "Confidence is low because Wazuh rule 1002 reported severity medium and did not include MITRE technique context.",
+        "level": "low",
+        "score": 0.35
+      },
+      "evidence_id": "evidence:real-data-event-1700000002-111",
+      "related_entities": {
+        "architecture_weaknesses": [],
+        "attack_chains": [],
+        "defense_recommendations": [],
+        "events": [
+          "event:1700000002.111"
+        ],
+        "memory_entries": [],
+        "mitre_techniques": []
+      },
+      "source_path": "reports/real-data-graph-ingest-output.json",
+      "source_reference": "event:1700000002.111",
+      "source_type": "detection_alert",
+      "summary": "event:1700000002.111 was parsed from Wazuh rule 1002 on host linux-web-01 with severity medium, but no MITRE techniques were available. Huginn should treat this as an evidence gap until more context is added.",
+      "timestamp": "2026-06-08T15:15:00.000Z",
+      "title": "Evidence gap for Wazuh alert: Generic Wazuh alert without MITRE mapping"
+    }
+  ],
+  "explanation": "The Wazuh file was read, valid alerts were normalized, events were added to a Knowledge Graph, and Evidence Layer records were generated.",
+  "schema_version": "1.0",
+  "source_path": "reports/sample-wazuh-pipeline-alerts.json",
+  "summary": {
+    "duplicates_skipped": 0,
+    "events_added": 2,
+    "evidence_gaps_created": 1,
+    "evidence_records_created": 2,
+    "records_parsed": 2,
+    "records_read": 3,
+    "records_skipped": 1,
+    "relationships_added": 2,
+    "techniques_added": 2
+  }
+}
