@@ -353,7 +353,7 @@ From the repository root:
 
 ```bash
 cd apps/api
-.venv/bin/uvicorn huginn_muninn_api.main:app --reload --host 127.0.0.1 --port 8000
+.venv/bin/uvicorn --app-dir src huginn_muninn_api.main:app --host 127.0.0.1 --port 8000
 ```
 
 Expected output should include:
@@ -544,7 +544,7 @@ Before opening the dashboard, make sure the API is running:
 
 ```bash
 cd apps/api
-.venv/bin/uvicorn huginn_muninn_api.main:app --reload --host 127.0.0.1 --port 8000
+.venv/bin/uvicorn --app-dir src huginn_muninn_api.main:app --host 127.0.0.1 --port 8000
 ```
 
 Then start the web app in another terminal:

@@ -1,0 +1,186 @@
+{
+  "evidence": [
+    {
+      "confidence": {
+        "calculation": {
+          "entity_correlation": {
+            "value": 1.0,
+            "weight": 0.25,
+            "weighted_score": 0.25
+          },
+          "recency": {
+            "value": 0.8,
+            "weight": 0.1,
+            "weighted_score": 0.08
+          },
+          "repeat_observation": {
+            "value": 0.75,
+            "weight": 0.2,
+            "weighted_score": 0.15
+          },
+          "severity_alignment": {
+            "value": 0.0,
+            "weight": 0.15,
+            "weighted_score": 0.0
+          },
+          "source_reliability": {
+            "value": 1.0,
+            "weight": 0.3,
+            "weighted_score": 0.3
+          }
+        },
+        "explanation": "Confidence is high because T1078 appears in the attack chain, links to a known post-auth weakness, and is also represented in memory.",
+        "level": "high",
+        "score": 0.78
+      },
+      "evidence_id": "evidence:valid-account-post-auth-001",
+      "related_entities": {
+        "architecture_weaknesses": [
+          "weakness:15953a2c-3b98-4640-9401-1306f95162e3"
+        ],
+        "attack_chains": [
+          "attack-chain:sim-full-lifecycle-001"
+        ],
+        "defense_recommendations": [],
+        "events": [
+          "event:64ef7517-c6bf-419f-99d1-2c6d93984694"
+        ],
+        "memory_entries": [
+          "memory:9a0bee3a-981c-4219-9211-ef546676c845"
+        ],
+        "mitre_techniques": [
+          "mitre:T1078"
+        ]
+      },
+      "source_path": "reports/attack-chain-analysis.json",
+      "source_reference": "attack-chain:sim-full-lifecycle-001",
+      "source_type": "attack_chain_report",
+      "summary": "The simulated attack chain includes valid account activity during the post-auth phase.",
+      "timestamp": "2026-06-01T18:43:55Z",
+      "title": "Valid account activity occurred during post-auth phase"
+    },
+    {
+      "confidence": {
+        "calculation": {
+          "entity_correlation": {
+            "value": 1.0,
+            "weight": 0.25,
+            "weighted_score": 0.25
+          },
+          "recency": {
+            "value": 0.8,
+            "weight": 0.1,
+            "weighted_score": 0.08
+          },
+          "repeat_observation": {
+            "value": 1.0,
+            "weight": 0.2,
+            "weighted_score": 0.2
+          },
+          "severity_alignment": {
+            "value": 0.9,
+            "weight": 0.15,
+            "weighted_score": 0.135
+          },
+          "source_reliability": {
+            "value": 1.0,
+            "weight": 0.3,
+            "weighted_score": 0.3
+          }
+        },
+        "explanation": "Confidence is high because architecture analysis, attack surface modeling, and memory all point to post-auth telemetry weakness.",
+        "level": "high",
+        "score": 0.965
+      },
+      "evidence_id": "evidence:post-auth-visibility-gap-001",
+      "related_entities": {
+        "architecture_weaknesses": [
+          "weakness:15953a2c-3b98-4640-9401-1306f95162e3"
+        ],
+        "attack_chains": [
+          "attack-chain:sim-full-lifecycle-001"
+        ],
+        "defense_recommendations": [
+          "recommendation:design.post_auth_telemetry_layer"
+        ],
+        "events": [
+          "event:3accc2fe-02e8-477c-a63a-224a3f0bb407"
+        ],
+        "memory_entries": [
+          "memory:a5cd21f6-082f-4e4a-b1b9-727a3ee71ebf"
+        ],
+        "mitre_techniques": [
+          "mitre:T1078",
+          "mitre:T1087"
+        ]
+      },
+      "source_path": "reports/security-architecture-weaknesses.json",
+      "source_reference": "weakness:15953a2c-3b98-4640-9401-1306f95162e3",
+      "source_type": "architecture_report",
+      "summary": "Architecture analysis identifies post-auth activity as lacking visibility and response coverage.",
+      "timestamp": "2026-06-01T19:51:09Z",
+      "title": "Post-auth visibility gap supports defensive architecture finding"
+    },
+    {
+      "confidence": {
+        "calculation": {
+          "entity_correlation": {
+            "value": 0.8,
+            "weight": 0.25,
+            "weighted_score": 0.2
+          },
+          "recency": {
+            "value": 0.8,
+            "weight": 0.1,
+            "weighted_score": 0.08
+          },
+          "repeat_observation": {
+            "value": 0.6,
+            "weight": 0.2,
+            "weighted_score": 0.12
+          },
+          "severity_alignment": {
+            "value": 0.9,
+            "weight": 0.15,
+            "weighted_score": 0.135
+          },
+          "source_reliability": {
+            "value": 1.0,
+            "weight": 0.3,
+            "weighted_score": 0.3
+          }
+        },
+        "explanation": "Confidence is high because the defense recommendation is tied to a known weakness and mapped to post-auth MITRE techniques.",
+        "level": "high",
+        "score": 0.835
+      },
+      "evidence_id": "evidence:post-auth-telemetry-recommendation-001",
+      "related_entities": {
+        "architecture_weaknesses": [
+          "weakness:15953a2c-3b98-4640-9401-1306f95162e3"
+        ],
+        "attack_chains": [],
+        "defense_recommendations": [
+          "recommendation:design.post_auth_telemetry_layer"
+        ],
+        "events": [
+          "event:04039a38-796f-4252-9965-cb6339d0b434"
+        ],
+        "memory_entries": [
+          "memory:22d8b5d8-ed3c-4f06-a498-ead1cea614f9"
+        ],
+        "mitre_techniques": [
+          "mitre:T1078",
+          "mitre:T1087"
+        ]
+      },
+      "source_path": "reports/defense-design-recommendations.json",
+      "source_reference": "recommendation:design.post_auth_telemetry_layer",
+      "source_type": "defense_recommendation",
+      "summary": "Defense design output recommends improving post-auth telemetry and correlation coverage.",
+      "timestamp": "2026-06-01T19:51:09Z",
+      "title": "Post-auth telemetry recommendation has supporting evidence"
+    }
+  ],
+  "schema_version": "1.0"
+}
