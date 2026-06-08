@@ -1,278 +1,226 @@
 # HUGINN // MUNINN
 
-## Overview
+## AI-Powered Defensive Intelligence Platform
 
-HUGINN // MUNINN is an evolving defensive intelligence platform for event-driven security analysis, attack-chain reasoning, memory-driven learning, and architecture-level defense design.
+A graph-driven cybersecurity platform designed to help analysts connect events, understand attack paths, retain context, and generate explainable defensive recommendations.
 
-The project is built around a central idea: defensive systems should not stop at alerting. They should preserve context, reconstruct adversary progression, identify recurring defensive weaknesses, measure whether coverage is improving, and recommend architectural changes that make future attacks harder to complete.
+Huginn // Muninn is an early-stage defensive intelligence system for security analysis, threat correlation, memory-driven learning, and evidence-backed decision support. The platform is designed to transform isolated security observations into connected operational context that can support investigations, reporting, and future AI-assisted SOC workflows.
 
-Huginn represents the intelligence and reasoning layer. It processes security events, models attack paths, prioritizes gaps, estimates attack success probability, and generates defensive recommendations.
+## Architecture Overview
 
-Muninn represents the memory layer. It stores outcomes, recurring weaknesses, strategic patterns, learning insights, and historical posture metrics so future decisions are influenced by what the system has already observed.
+![System Layers](docs/assets/screenshots/01-system-layers.png)
 
-The long-term vision is an AI-assisted defensive operations platform that can help SOC teams move from isolated alert handling toward adaptive, evidence-driven defense improvement.
+Huginn and Muninn are modeled after Odin's ravens. Huginn represents thought and reasoning. Muninn represents memory and historical context. Together they provide structured defensive intelligence built on top of a knowledge graph.
 
-## Core Architecture
+The current architecture connects event analysis, attack-chain reasoning, defensive learning, evidence generation, graph intelligence, API access, and dashboard visibility.
 
 ```mermaid
 flowchart TD
-  Sensors["Detection Sources<br/>Wazuh, Suricata, Sysmon, auditd"] --> Events["Canonical SOC Event Schema"]
-  Sim["Attack Simulation Events"] --> Events
-  Events --> Bus["SOC Event Bus"]
-  Bus --> Routing["Detection-to-Response Routing"]
-  Routing --> Playbooks["Response Playbooks"]
-  Playbooks --> Outcomes["Outcome + Report Memory"]
-  Outcomes --> Chain["Attack Chain Analyzer"]
-  Chain --> Coverage["Coverage Matrix"]
-  Coverage --> Gaps["Gap Analysis + Prioritization"]
-  Gaps --> Risk["Attack Success Model"]
-  Risk --> Defense["Defense Decision Engine"]
-  Defense --> Learning["Defense Learning Engine"]
-  Learning --> Memory["Strategic Memory"]
-  Memory --> Architecture["Security Architecture Analyzer"]
-  Architecture --> Surface["Attack Surface Model"]
-  Surface --> Design["Defense Design Generator"]
-  Design --> Complexity["Defense Complexity Engine"]
-  Complexity --> Context["SOC Intelligence Context Builder"]
-  Context --> Bus
+    A[Security Events] --> B[Attack Chain Reasoning]
+    B --> C[Strategic Memory]
+    C --> D[Defensive Learning]
+    D --> E[Architecture Analysis]
+    E --> F[Defense Design]
+    F --> G[Knowledge Graph]
+    G --> H[Graph Intelligence]
+    H --> I[FastAPI Layer]
+    I --> J[Dashboard]
 ```
 
-The system is organized into clear responsibility boundaries:
+## Dashboard
 
-- `detection-engine/`: sensor definitions and detection content for Wazuh, Suricata, Sysmon, and auditd.
-- `core/`: event normalization, intelligence routing, analytics, learning, architectural reasoning, and recommendation engines.
-- `playbooks/`: response procedures selected by the routing layer.
-- `reports/`: generated intelligence outputs, outcome records, posture snapshots, and decision artifacts.
-- `core/patterns/`: long-term strategic memory and recommendation-only learning artifacts.
-- `apps/api/`: FastAPI backend for Huginn/Muninn orchestration, event handling, decision routing, memory, and reasoning patterns.
-- `apps/web/`: Next.js dashboard surface for event, decision, outcome, and reasoning visibility.
-- `docs/`: architecture documentation, event-flow documentation, repository tree, screenshots, and publication notes.
+![Dashboard](docs/assets/screenshots/02-huginn-dashboard.png)
 
-## Intelligence Layers
+The dashboard acts as the command center for the platform. It provides:
 
-### Detection Layer
+- Conversation interface
+- Event processing
+- Security analysis
+- Graph intelligence visibility
+- System state monitoring
 
-The detection layer represents raw defensive sensor coverage. Current repository content includes Wazuh and Suricata rule examples, Sysmon documentation, auditd guidance, and MITRE ATT&CK-aligned detection conventions.
+## Graph Intelligence
 
-This layer is intentionally treated as sensor-only. Higher-level intelligence modules consume normalized events and reports rather than directly modifying detection rules.
+![Graph Intelligence](docs/assets/screenshots/03-graph-intelligence-panel.png)
 
-### Correlation Layer
+The Graph Intelligence layer transforms isolated security events into connected context. It identifies:
 
-The correlation layer converts individual events into structured security context. It includes:
+- Related entities
+- Similar incidents
+- Defensive recommendations
+- Architectural weaknesses
+- Attack chain relationships
 
-- canonical SOC event schema
-- in-memory SOC event bus
-- detection-to-playbook mapping
-- attack-chain reconstruction
-- MITRE technique sequencing
-- missing transition detection
-- coverage matrix generation
+This gives Huginn a structured way to ask questions such as what a security event is connected to, which weaknesses are related to a technique, and what recommendations are supported by known context.
 
-This moves the system beyond isolated alert handling and toward chain-aware defensive reasoning.
+## Graph Intelligence API
 
-### Learning Layer
+![API Summary](docs/assets/screenshots/02-api-graph-summary\(2\).png)
 
-The learning layer evaluates whether defensive actions are working over time. It includes:
+The FastAPI layer exposes graph intelligence data for dashboards, automation workflows, and future AI reasoning components.
 
-- outcome tracking
-- SOC health metrics
-- false-positive indicators
-- playbook success measurement
-- defense evolution tracking
-- recurring weakness extraction
-- gap closure rate analysis
+Current graph statistics:
 
-Learning outputs are recommendation-only. The system records what should be improved, but does not automatically rewrite detection logic.
+- 43 Nodes
+- 42 Relationships
+- MITRE ATT&CK mappings
+- Attack chain relationships
+- Memory links
+- Defensive recommendations
 
-### Memory Layer
+Current read-only API endpoints:
 
-Muninn stores the system's accumulated defensive memory. It captures:
+```text
+GET /graph/summary
+GET /graph/related/{entity_id}
+GET /graph/weaknesses/{entity_id}
+GET /graph/recommendations/{technique_id}
+GET /graph/similar-incidents/{event_id}
+```
 
-- detection outcomes
-- pattern suggestions
-- prioritized gaps
-- strategic memory patterns
-- learning insights
-- architecture weaknesses
-- evolution snapshots
+## Core Capabilities
 
-This memory is used by the context builder so future reasoning can account for repeated failures, structural blind spots, and previous defensive decisions.
+Huginn // Muninn currently supports several defensive intelligence capabilities:
 
-### Architecture Analysis Layer
+- Event-driven security analysis for structured SOC context
+- Attack-chain reconstruction using MITRE ATT&CK techniques
+- Memory-driven learning from reports, outcomes, and recurring patterns
+- Knowledge graph modeling for events, techniques, weaknesses, recommendations, and memory entries
+- Graph intelligence queries for related entities, connected weaknesses, similar incidents, and recommendations
+- Evidence data modeling and evidence builder output for explainable findings
+- Architecture-level defense analysis and recommendation generation
+- Dashboard and API visibility for the current intelligence layer
 
-The architecture analysis layer identifies system-level blind spots rather than rule-level issues. Implemented modules analyze:
+## Current Features
 
-- recurring post-auth weaknesses
-- missing chain transitions
-- weak response orchestration
-- telemetry blind spots
-- under-instrumented attack surface layers
-- complexity versus coverage tradeoffs
+| Feature | Status |
+|----------|----------|
+| Knowledge Graph | ✅ |
+| Graph Intelligence | ✅ |
+| FastAPI API | ✅ |
+| Dashboard | ✅ |
+| Evidence Layer Phase 1 | ✅ |
+| Evidence Builder Phase 2 | ✅ |
+| Huginn Thought Engine | ✅ |
+| Muninn Memory Engine | ✅ |
+| Voice Layer | 🚧 |
+| SOC Integration | 🚧 |
 
-The current analysis identifies post-auth activity as a critical under-instrumented layer, especially around valid account use and account discovery.
+## Current Platform Status
 
-### Defensive Design Layer
+| Area | Current State |
+| --- | --- |
+| Huginn | Online |
+| Muninn | Online |
+| Knowledge Graph | Active |
+| Graph Intelligence | Active |
+| Evidence Layer | Phase 1 and Phase 2 complete |
+| API | Operational |
+| Dashboard | Operational |
+| Graph Size | 43 nodes, 42 relationships |
+| Focused Validation | 26 tests passing |
 
-The defensive design layer converts architecture weaknesses into system design recommendations. It focuses on:
+## Validation
 
-- new defensive subsystems
-- telemetry enrichment layers
-- attack-chain correlation services
-- response coverage indexing
-- attack surface instrumentation maps
-- simplification opportunities when architecture grows faster than coverage
+Current validation status:
 
-It does not generate detection rules. Its purpose is to guide defensive architecture evolution.
+- Graph/API/Evidence tests passing
+- 26 tests passing
+- API operational
+- Dashboard operational
+- Graph intelligence operational
 
-## Current Capabilities
+Focused test command:
 
-Implemented functionality includes:
+```bash
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 apps/api/.venv/bin/python -m pytest apps/api/tests/test_knowledge_graph.py apps/api/tests/test_graph_intelligence.py apps/api/tests/test_graph_api.py apps/api/tests/test_evidence_schema.py apps/api/tests/test_evidence_builder.py -q
+```
 
-- Canonical SOC event model with event type, source system, MITRE mapping, severity, timestamp, raw payload, and normalized context.
-- In-memory SOC event bus with event persistence to `reports/soc-events.jsonl`.
-- Detection alert ingestion and lab event ingestion.
-- Detection-to-playbook routing for brute force and SMB probing scenarios.
-- Outcome tracking with analyst notes and tuning suggestions.
-- SOC health reporting with coverage, false-positive indicators, playbook success rate, and mean detection-to-response time.
-- Gap analysis for missed techniques, weak detection coverage, and outcome quality concerns.
-- Attack chain reconstruction across MITRE techniques and defensive phases.
-- Coverage matrix mapping techniques to detection status, chain correlation, and response effectiveness.
-- Prioritized gap ranking based on chain severity, exploitability, and exposure risk.
-- Attack success probability modeling.
-- Defensive action planning and improvement prioritization.
-- Defensive learning insights based on recurring weaknesses and structural failures.
-- Evolution metrics for coverage, risk, open gaps, critical gaps, and gap closure rate.
-- Strategic memory for repeated attack and failure combinations.
-- Security architecture weakness analysis.
-- Attack surface modeling across pre-auth, auth, and post-auth layers.
-- Defensive design recommendation generation.
-- Defense complexity analysis for simplification opportunities.
-- FastAPI backend with event-driven orchestration, graph-based decision routing, outcome tracking, and reasoning pattern support.
-- Next.js dashboard for visualizing events, decisions, outcomes, learning, and reasoning patterns.
+## Project Vision
 
-Generated intelligence artifacts currently include:
+Huginn // Muninn is not intended to replace analysts. The goal is to augment analyst decision making by:
 
-- `reports/attack-chain-analysis.json`
-- `reports/coverage-matrix.json`
-- `reports/prioritized-gaps.json`
-- `reports/attack-success-probability.json`
-- `reports/defense-plan.json`
-- `reports/defense-learning-insights.json`
-- `reports/defense-evolution-metrics.json`
-- `reports/security-architecture-weaknesses.json`
-- `reports/attack-surface-model.json`
-- `reports/defense-design-recommendations.json`
-- `reports/defense-complexity-insights.json`
-- `core/patterns/strategic-memory.json`
+- Connecting fragmented information
+- Preserving institutional memory
+- Explaining defensive recommendations
+- Providing evidence-backed reasoning
+- Accelerating threat investigation workflows
 
-## Strategic Roadmap
+The long-term direction is an AI-assisted defensive operations platform where security events, prior incidents, architecture weaknesses, and analyst knowledge are connected into a persistent reasoning system.
 
-### Phase 1: Event-Driven Defensive Intelligence
+## Roadmap
 
-- Normalize all security activity into canonical SOC events.
-- Expand event ingestion for Wazuh, Suricata, Sysmon, auditd, and simulated attack activity.
-- Maintain strict separation between sensor content and intelligence logic.
+### Phase 1
 
-### Phase 2: Chain-Aware Detection Reasoning
+- Knowledge Graph
+- Graph Intelligence
+- Dashboard
 
-- Expand attack-chain reconstruction across more MITRE techniques.
-- Add stronger entity correlation across source IP, user, host, process, and time windows.
-- Improve transition modeling between pre-auth, auth, post-auth, persistence, lateral movement, and impact phases.
+### Phase 2
 
-### Phase 3: Defensive Learning and Memory
+- Evidence Layer
+- Evidence Builder
 
-- Track defensive posture over repeated runs.
-- Measure risk reduction after analyst-approved improvements.
-- Use strategic memory to influence future prioritization and decision-making.
+### Phase 3
 
-### Phase 4: Architecture-Level Defense Design
+- Evidence Query Engine
+- Evidence API
+- Evidence Dashboard
 
-- Mature architecture weakness analysis into a design decision system.
-- Model telemetry architecture, correlation architecture, and response architecture as first-class defensive assets.
-- Use complexity analysis to prevent redundant or fragmented defensive layers.
+### Phase 4
 
-### Phase 5: AI-Assisted Defensive Operations
+- Voice Layer
+- Hey Huginn
 
-- Connect Huginn reasoning to analyst workflows through the API and dashboard.
-- Support guided triage, report drafting, investigation planning, and evidence summarization.
-- Add controlled human approval gates for recommendations, escalation paths, and future automation.
+### Phase 5
+
+- Wazuh Integration
+- Suricata Integration
+- Real SOC Event Ingestion
+
+### Phase 6
+
+- Autonomous Investigation Assistant
 
 ## Why This Project Exists
 
-Modern defensive operations often fail because alerts are treated as isolated events. A brute-force alert, an SMB probe, and a successful login may each be understood individually, but the defensive system may still miss the larger chain: reconnaissance, credential access, valid account use, and post-auth discovery.
+Security teams often have enough data but not enough connected context. Alerts, incidents, architecture notes, recommendations, and historical lessons are frequently stored in separate places. That makes it harder to understand what happened, why it matters, what has been seen before, and which defensive action should come next.
 
-HUGINN // MUNINN addresses that problem by preserving context across the defensive lifecycle:
-
-- What happened?
-- Which MITRE techniques were involved?
-- Which stages were detected?
-- Which stages were missed?
-- Did response coverage exist?
-- Did the same weakness appear before?
-- Is the architecture missing a telemetry layer, a correlation layer, or a response layer?
-- Which defensive improvement would most disrupt the next attack chain?
-
-The project is designed to turn detection engineering evidence into strategic defensive intelligence.
+Huginn // Muninn addresses that gap by modeling defensive knowledge as connected intelligence instead of isolated records.
 
 ## Skills Demonstrated
 
-This repository demonstrates practical cybersecurity engineering skills across multiple domains:
+This project demonstrates practical cybersecurity engineering and platform design skills:
 
-- Detection engineering: MITRE ATT&CK mapping, Wazuh rule structure, Suricata rule structure, Sysmon and auditd telemetry awareness.
-- SOC analysis: event triage, incident timelines, evidence handling, playbook-driven response, outcome tracking.
-- Threat correlation: canonical event modeling, event bus routing, technique sequencing, chain transition analysis.
-- Defensive analytics: coverage measurement, false-positive indicators, response effectiveness, detection-to-response timing.
-- Security architecture: telemetry blind spot analysis, attack surface modeling, response architecture assessment, complexity reduction.
-- Decision engineering: risk scoring, gap prioritization, attack success modeling, defensive action planning.
-- Memory-driven systems: strategic memory, recurring weakness extraction, learning loops, evolution tracking.
-- Software engineering: FastAPI backend, Next.js dashboard, structured Python modules, validation scripts, documentation, repository organization.
-- DevSecOps discipline: `.gitignore` hygiene, validation workflows, private repository readiness, separation of generated artifacts from source logic.
-
-## Future Vision
-
-The long-term direction is an AI-assisted defensive operations platform where Huginn reasons over events, chains, gaps, outcomes, and architecture, while Muninn maintains long-term memory of what the defensive system has learned.
-
-Potential future capabilities include:
-
-- real-time event ingestion from SIEM, IDS, EDR, and cloud telemetry
-- entity-aware threat correlation across hosts, accounts, processes, and network flows
-- analyst-guided investigation planning
-- AI-assisted incident report generation
-- defensive architecture recommendations based on measured coverage and risk
-- dashboard views for attack-chain progression, memory patterns, and architecture weaknesses
-- approval-gated automation for playbook execution and ticket creation
-- continuous measurement of whether defensive changes reduce modeled attack success probability
-
-The intended end state is not an autonomous system that changes detections without review. The goal is a defensive intelligence platform that helps security teams understand what matters, why it matters, and which architecture changes most improve resilience.
+- SOC detection engineering concepts
+- MITRE ATT&CK-aligned analysis
+- Attack-chain reasoning
+- Defensive architecture analysis
+- Knowledge graph design
+- Evidence and confidence modeling
+- FastAPI service design
+- Dashboard integration
+- Testable Python module development
+- Security-focused documentation and roadmap planning
 
 ## Development
 
-### Backend
+Start the API:
 
 ```bash
 cd apps/api
-python -m venv .venv
-. .venv/bin/activate
-pip install -e ".[dev]"
-uvicorn --app-dir src huginn_muninn_api.main:app --reload
+PYTHONPATH=src .venv/bin/uvicorn huginn_muninn_api.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### Frontend
+Start the dashboard:
 
 ```bash
 cd apps/web
-npm install
 npm run dev
 ```
 
-### Validation
+Open:
 
-```bash
-apps/api/.venv/bin/ruff check core apps/api/src apps/api/tests
-apps/api/.venv/bin/python -m pytest apps/api/tests
-python scripts/validate_wazuh_rules.py
+```text
+http://127.0.0.1:3000
 ```
-
-## License
-
-MIT. See [LICENSE](LICENSE).
