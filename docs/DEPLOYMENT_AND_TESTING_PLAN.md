@@ -591,6 +591,55 @@ The dashboard now shows part of Munnin's map. It shows how many clue cards are
 on the map, which cards are connected, which weak spots matter, and which fix-it
 ideas Huginn should look at.
 
+### Verify the Evidence Panel
+
+The dashboard now has a simple Evidence panel near Graph Intelligence.
+
+Before opening the dashboard, make sure the API is running:
+
+```bash
+cd apps/api
+.venv/bin/uvicorn --app-dir src huginn_muninn_api.main:app --host 127.0.0.1 --port 8000
+```
+
+Then start the web app in another terminal:
+
+```bash
+cd apps/web
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+npm run dev
+```
+
+Open:
+
+```text
+http://127.0.0.1:3000/
+```
+
+Expected Evidence panel content:
+
+- evidence record count
+- high confidence count
+- confidence levels
+- sample finding
+- related MITRE techniques
+- related weaknesses
+- related recommendations
+- evidence gap explanation
+- Refresh Evidence button
+
+You can also verify the API directly:
+
+```bash
+curl http://127.0.0.1:8000/evidence/summary
+curl http://127.0.0.1:8000/evidence/mitre/T1078
+curl http://127.0.0.1:8000/evidence/finding/finding:does-not-exist
+```
+
+Like you are 10:
+
+The Evidence panel shows Huginn's proof cards. If there are no proof cards for a question, it says that is an evidence gap.
+
 ### Web Tooling Troubleshooting
 
 Use Node 22 for the dashboard:
@@ -627,21 +676,25 @@ and checks that the parts fit together before the browser opens it.
 
 ### Recommended Test Command
 
-Use this command for focused graph tests:
+Use this command for focused graph, API, and evidence tests:
 
 ```bash
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 apps/api/.venv/bin/python -m pytest \
   apps/api/tests/test_knowledge_graph.py \
   apps/api/tests/test_graph_intelligence.py \
   apps/api/tests/test_graph_api.py \
+  apps/api/tests/test_evidence_schema.py \
+  apps/api/tests/test_evidence_builder.py \
+  apps/api/tests/test_evidence_query.py \
+  apps/api/tests/test_evidence_api.py \
   -q
 ```
 
 Expected output:
 
 ```text
-.............                                                            [100%]
-13 passed
+..........................................                               [100%]
+42 passed
 ```
 
 ### Ruff

@@ -74,9 +74,54 @@ type GraphPanelState = {
   status: "loading" | "ready" | "error";
 };
 
+type EvidenceRecord = {
+  evidence_id: string;
+  title: string;
+  summary: string;
+  source_reference: string;
+  related_entities: {
+    events?: string[];
+    mitre_techniques?: string[];
+    architecture_weaknesses?: string[];
+    defense_recommendations?: string[];
+  };
+  confidence: {
+    level: string;
+    score: number;
+    explanation: string;
+  };
+};
+
+type EvidenceSummaryResponse = {
+  summary?: {
+    total_records?: number;
+    confidence_counts?: Record<string, number>;
+  };
+  evidence_records?: EvidenceRecord[];
+  explanation?: string;
+};
+
+type EvidenceQueryResponse = {
+  evidence_records?: EvidenceRecord[];
+  match_count?: number;
+  explanation?: string;
+};
+
+type EvidencePanelState = {
+  summary: EvidenceSummaryResponse | null;
+  finding: EvidenceQueryResponse | null;
+  mitre: EvidenceQueryResponse | null;
+  weakness: EvidenceQueryResponse | null;
+  recommendation: EvidenceQueryResponse | null;
+  gap: EvidenceQueryResponse | null;
+  status: "loading" | "ready" | "error";
+};
+
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const sampleTechniqueId = "T1078";
 const sampleEventId = "f26fa03a-6c8e-44ca-b906-12c974dcbcbf";
+const sampleWeaknessId = "15953a2c-3b98-4640-9401-1306f95162e3";
+const sampleRecommendationId = "design.post_auth_telemetry_layer";
 
 const systems = [
   { label: "Huginn", detail: "Thought Engine", icon: BrainCircuit, status: "online" },
@@ -100,6 +145,15 @@ export default function Home() {
     weaknesses: null,
     recommendations: null,
     similarIncidents: null,
+    status: "loading",
+  });
+  const [evidencePanel, setEvidencePanel] = useState<EvidencePanelState>({
+    summary: null,
+    finding: null,
+    mitre: null,
+    weakness: null,
+    recommendation: null,
+    gap: null,
     status: "loading",
   });
 
@@ -168,6 +222,45 @@ export default function Home() {
   useEffect(() => {
     void refreshGraphIntelligence();
   }, [refreshGraphIntelligence]);
+
+  const refreshEvidence = useCallback(async () => {
+    setEvidencePanel((current) => ({ ...current, status: "loading" }));
+    try {
+      const [summary, finding, mitre, weakness, recommendation, gap] = await Promise.all([
+        fetch(`${apiUrl}/evidence/summary`).then((response) => response.json()),
+        fetch(`${apiUrl}/evidence/finding/weakness:${sampleWeaknessId}`).then((response) =>
+          response.json(),
+        ),
+        fetch(`${apiUrl}/evidence/mitre/${sampleTechniqueId}`).then((response) =>
+          response.json(),
+        ),
+        fetch(`${apiUrl}/evidence/weakness/${sampleWeaknessId}`).then((response) =>
+          response.json(),
+        ),
+        fetch(`${apiUrl}/evidence/recommendation/${sampleRecommendationId}`).then((response) =>
+          response.json(),
+        ),
+        fetch(`${apiUrl}/evidence/finding/finding:does-not-exist`).then((response) =>
+          response.json(),
+        ),
+      ]);
+      setEvidencePanel({
+        summary,
+        finding,
+        mitre,
+        weakness,
+        recommendation,
+        gap,
+        status: "ready",
+      });
+    } catch {
+      setEvidencePanel((current) => ({ ...current, status: "error" }));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshEvidence();
+  }, [refreshEvidence]);
 
   async function sendChat() {
     setIsLoading(true);
@@ -481,6 +574,81 @@ export default function Home() {
 
           <div className="rounded-lg border border-command-line bg-white p-5 shadow-panel">
             <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Evidence</h2>
+              <ShieldCheck className="text-command-signal" size={22} />
+            </div>
+            {evidencePanel.status === "error" ? (
+              <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-700">
+                Evidence API is not available. Start the API and refresh this panel.
+              </p>
+            ) : (
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-command-line bg-command-panel p-3">
+                    <p className="text-xs uppercase text-neutral-500">Evidence Records</p>
+                    <p className="mt-1 text-xl font-semibold text-command-ink">
+                      {evidencePanel.summary?.summary?.total_records ?? "Loading"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-command-line bg-command-panel p-3">
+                    <p className="text-xs uppercase text-neutral-500">High Confidence</p>
+                    <p className="mt-1 text-xl font-semibold text-command-ink">
+                      {evidencePanel.summary?.summary?.confidence_counts?.high ?? "Loading"}
+                    </p>
+                  </div>
+                </div>
+
+                <ConfidenceLevels counts={evidencePanel.summary?.summary?.confidence_counts} />
+
+                <EvidenceRecordCard
+                  title="Sample Finding"
+                  record={evidencePanel.finding?.evidence_records?.[0]}
+                  explanation={evidencePanel.finding?.explanation}
+                />
+
+                <EvidenceFactList
+                  title={`Related MITRE Techniques (${sampleTechniqueId})`}
+                  values={uniqueEvidenceValues(
+                    evidencePanel.mitre?.evidence_records,
+                    "mitre_techniques",
+                  )}
+                />
+                <EvidenceFactList
+                  title="Related Weaknesses"
+                  values={uniqueEvidenceValues(
+                    evidencePanel.weakness?.evidence_records,
+                    "architecture_weaknesses",
+                  )}
+                />
+                <EvidenceFactList
+                  title="Related Recommendations"
+                  values={uniqueEvidenceValues(
+                    evidencePanel.recommendation?.evidence_records,
+                    "defense_recommendations",
+                  )}
+                />
+
+                <div className="rounded-md border border-command-line bg-command-panel p-3">
+                  <p className="text-xs font-semibold uppercase text-neutral-500">
+                    Evidence Gaps
+                  </p>
+                  <p className="mt-2 text-sm text-neutral-700">
+                    {evidencePanel.gap?.explanation ?? "Loading evidence gap example."}
+                  </p>
+                </div>
+
+                <button
+                  onClick={refreshEvidence}
+                  className="rounded-md border border-command-line px-3 py-2 text-sm font-medium text-neutral-700"
+                >
+                  Refresh Evidence
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-command-line bg-white p-5 shadow-panel">
+            <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Learning Loop</h2>
               <Database className="text-command-signal" size={22} />
             </div>
@@ -603,6 +771,93 @@ export default function Home() {
       </section>
     </main>
   );
+}
+
+function ConfidenceLevels({ counts }: { counts?: Record<string, number> }) {
+  const levels = ["high", "medium", "low"];
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">Confidence Levels</p>
+      <div className="grid grid-cols-3 gap-2">
+        {levels.map((level) => (
+          <div key={level} className="rounded-md border border-command-line p-3">
+            <p className="text-xs uppercase text-neutral-500">{level}</p>
+            <p className="mt-1 text-sm font-semibold text-command-ink">
+              {counts?.[level] ?? 0}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EvidenceRecordCard({
+  title,
+  record,
+  explanation,
+}: {
+  title: string;
+  record?: EvidenceRecord;
+  explanation?: string;
+}) {
+  return (
+    <div className="rounded-md border border-command-line p-3">
+      <p className="text-xs font-semibold uppercase text-neutral-500">{title}</p>
+      {record ? (
+        <div className="mt-2 grid gap-2">
+          <div>
+            <p className="text-sm font-medium text-command-ink">{record.title}</p>
+            <p className="mt-1 text-xs text-neutral-600">{record.evidence_id}</p>
+          </div>
+          <p className="text-sm leading-5 text-neutral-700">{record.summary}</p>
+          <div className="grid gap-1 text-xs text-neutral-600">
+            <p>Source: {record.source_reference}</p>
+            <p>
+              Confidence: {record.confidence.level} ({Math.round(record.confidence.score * 100)}%)
+            </p>
+            <p>{record.confidence.explanation}</p>
+          </div>
+          {explanation && <p className="text-xs text-neutral-600">{explanation}</p>}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-neutral-600">No evidence record loaded yet.</p>
+      )}
+    </div>
+  );
+}
+
+function EvidenceFactList({ title, values }: { title: string; values: string[] }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">{title}</p>
+      {values.length === 0 ? (
+        <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-600">
+          No evidence facts loaded yet.
+        </p>
+      ) : (
+        values.slice(0, 5).map((value) => (
+          <p
+            key={value}
+            className="truncate rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-700"
+          >
+            {value}
+          </p>
+        ))
+      )}
+    </div>
+  );
+}
+
+function uniqueEvidenceValues(
+  records: EvidenceRecord[] | undefined,
+  key: keyof EvidenceRecord["related_entities"],
+) {
+  const values = new Set<string>();
+  records?.forEach((record) => {
+    record.related_entities[key]?.forEach((value) => values.add(value));
+  });
+  return Array.from(values).sort();
 }
 
 function GraphEntityList({ title, entities }: { title: string; entities: GraphEntity[] }) {
