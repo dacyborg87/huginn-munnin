@@ -642,12 +642,13 @@ The Evidence panel shows Huginn's proof cards. If there are no proof cards for a
 
 ### Web Tooling Troubleshooting
 
-Use Node 22 for the dashboard:
+The dashboard requires Node 22:
 
 ```bash
 cd apps/web
 export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 node --version
+npm --version
 ```
 
 Expected output should start with:
@@ -656,21 +657,97 @@ Expected output should start with:
 v22.
 ```
 
-Run checks:
+On this machine, the default Homebrew `node` may point to a broken Node 24
+binary:
+
+```text
+/opt/homebrew/bin/node -> ../Cellar/node/24.10.0/bin/node
+```
+
+The broken Node 24 binary fails before Next.js starts because it expects an old
+Homebrew library:
+
+```text
+libsimdjson.27.dylib
+```
+
+The installed `simdjson` library provides a newer ABI:
+
+```text
+libsimdjson.33.dylib
+```
+
+Diagnose the active Node/npm paths:
+
+```bash
+which node
+which npm
+node --version
+npm --version
+```
+
+Check the broken Homebrew linkage:
+
+```bash
+otool -L /opt/homebrew/Cellar/node/24.10.0/bin/node | grep simdjson
+ls -l /opt/homebrew/opt/simdjson/lib
+```
+
+Check whether Node 22 is installed:
+
+```bash
+brew list --versions node node@22 simdjson
+/opt/homebrew/opt/node@22/bin/node --version
+```
+
+Temporary per-terminal fix:
+
+```bash
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+node --version
+npm --version
+```
+
+Persistent shell fix:
+
+```bash
+echo 'export PATH="/opt/homebrew/opt/node@22/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+Alternative Homebrew link fix:
+
+```bash
+brew unlink node
+brew link --overwrite --force node@22
+```
+
+Use the PATH fix first because it is less invasive.
+
+Run the build check:
 
 ```bash
 npm run build
 ```
 
-`npm run build` is the current stable web validation command. It compiles the
-dashboard and runs Next.js type validation. `npm run lint`, direct ESLint, and
-standalone TypeScript checks may still hang in this local environment, so do
-not use them as the release gate until the tooling stack is revisited.
+With the Node 22 PATH fix, `npm run build` reaches Next.js:
+
+```text
+▲ Next.js 15.5.18
+Creating an optimized production build ...
+```
+
+Do not claim a full build pass unless the command exits successfully. In the
+local Homebrew environment, the build may still run slowly or appear to hang
+after reaching Next.js. `npm run lint`, direct ESLint, and standalone
+TypeScript checks may also hang in this local environment, so do not use them
+as the release gate until the tooling stack is revisited.
 
 Like you are 10:
 
-Node is the engine. npm installs the dashboard parts. Next builds the dashboard
-and checks that the parts fit together before the browser opens it.
+Node is the engine. The default engine on this computer is broken because it is
+looking for a missing part. Node 22 is another engine that works. Put Node 22
+first, then npm can start Next.js.
 
 ## Testing
 
