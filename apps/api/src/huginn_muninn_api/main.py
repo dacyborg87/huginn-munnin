@@ -9,6 +9,7 @@ from core.event_bus import EventBus
 from huginn_muninn_api.core.config import Settings
 from huginn_muninn_api.core.evidence_api import EvidenceApi
 from huginn_muninn_api.core.graph_intelligence_api import GraphIntelligenceApi
+from huginn_muninn_api.core.live_telemetry_api import LiveTelemetryApi
 from huginn_muninn_api.core.orchestrator import Orchestrator
 from huginn_muninn_api.schemas.chat import ChatAcceptedResponse, ChatRequest
 from huginn_muninn_api.schemas.events import EventLogEntry
@@ -21,6 +22,7 @@ orchestrator = Orchestrator(event_bus)
 repository_root = Path(__file__).resolve().parents[4]
 graph_intelligence = GraphIntelligenceApi(repository_root)
 evidence_api = EvidenceApi(repository_root)
+live_telemetry_api = LiveTelemetryApi(repository_root)
 
 
 @asynccontextmanager
@@ -137,3 +139,28 @@ def evidence_by_recommendation(recommendation_id: str) -> dict:
 @app.get("/evidence/confidence/{level}")
 def evidence_by_confidence(level: str) -> dict:
     return evidence_api.confidence(level)
+
+
+@app.get("/dashboard/summary")
+def dashboard_summary() -> dict:
+    return live_telemetry_api.summary()
+
+
+@app.get("/dashboard/events")
+def dashboard_events() -> dict:
+    return live_telemetry_api.events()
+
+
+@app.get("/dashboard/rules")
+def dashboard_rules() -> dict:
+    return live_telemetry_api.rules()
+
+
+@app.get("/dashboard/agents")
+def dashboard_agents() -> dict:
+    return live_telemetry_api.agents()
+
+
+@app.get("/dashboard/evidence")
+def dashboard_evidence() -> dict:
+    return live_telemetry_api.evidence()

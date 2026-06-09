@@ -117,6 +117,64 @@ type EvidencePanelState = {
   status: "loading" | "ready" | "error";
 };
 
+type TelemetryEvent = {
+  event_id?: string;
+  timestamp?: string;
+  rule_id?: string;
+  description?: string;
+  severity?: string;
+  source_agent?: string;
+};
+
+type SeverityBucket = {
+  severity: string;
+  count: number;
+  percentage: number;
+};
+
+type RuleSummary = {
+  rule_id: string;
+  description: string;
+  occurrence_count: number;
+};
+
+type AgentSummary = {
+  agent_name: string;
+  event_count: number;
+};
+
+type TelemetryGap = {
+  evidence_id?: string;
+  title?: string;
+  reasons?: string[];
+  explanation?: string;
+};
+
+type TelemetryEvidenceSummaryData = {
+  total_evidence_records?: number;
+  high_confidence?: number;
+  medium_confidence?: number;
+  low_confidence?: number;
+  evidence_gaps?: number;
+};
+
+type DashboardTelemetryResponse = {
+  recent_events?: TelemetryEvent[];
+  severity_breakdown?: SeverityBucket[];
+  top_rules?: RuleSummary[];
+  top_agents?: AgentSummary[];
+  evidence?: {
+    summary?: TelemetryEvidenceSummaryData;
+    evidence_gaps?: TelemetryGap[];
+  };
+  explanation?: string;
+};
+
+type TelemetryPanelState = {
+  summary: DashboardTelemetryResponse | null;
+  status: "loading" | "ready" | "error";
+};
+
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const sampleTechniqueId = "T1078";
 const sampleEventId = "f26fa03a-6c8e-44ca-b906-12c974dcbcbf";
@@ -154,6 +212,10 @@ export default function Home() {
     weakness: null,
     recommendation: null,
     gap: null,
+    status: "loading",
+  });
+  const [telemetryPanel, setTelemetryPanel] = useState<TelemetryPanelState>({
+    summary: null,
     status: "loading",
   });
 
@@ -261,6 +323,22 @@ export default function Home() {
   useEffect(() => {
     void refreshEvidence();
   }, [refreshEvidence]);
+
+  const refreshTelemetry = useCallback(async () => {
+    setTelemetryPanel((current) => ({ ...current, status: "loading" }));
+    try {
+      const summary = await fetch(`${apiUrl}/dashboard/summary`).then((response) =>
+        response.json(),
+      );
+      setTelemetryPanel({ summary, status: "ready" });
+    } catch {
+      setTelemetryPanel((current) => ({ ...current, status: "error" }));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshTelemetry();
+  }, [refreshTelemetry]);
 
   async function sendChat() {
     setIsLoading(true);
@@ -649,6 +727,50 @@ export default function Home() {
 
           <div className="rounded-lg border border-command-line bg-white p-5 shadow-panel">
             <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Live Telemetry Intelligence</h2>
+              <Activity className="text-command-signal" size={22} />
+            </div>
+            {telemetryPanel.status === "error" ? (
+              <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-700">
+                Live telemetry summary is not available. Start the API and refresh this panel.
+              </p>
+            ) : (
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-command-line bg-command-panel p-3">
+                    <p className="text-xs uppercase text-neutral-500">Evidence Generated</p>
+                    <p className="mt-1 text-xl font-semibold text-command-ink">
+                      {telemetryPanel.summary?.evidence?.summary?.total_evidence_records ??
+                        "Loading"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-command-line bg-command-panel p-3">
+                    <p className="text-xs uppercase text-neutral-500">Evidence Gaps</p>
+                    <p className="mt-1 text-xl font-semibold text-command-ink">
+                      {telemetryPanel.summary?.evidence?.summary?.evidence_gaps ?? "Loading"}
+                    </p>
+                  </div>
+                </div>
+
+                <SeverityBreakdown buckets={telemetryPanel.summary?.severity_breakdown ?? []} />
+                <TelemetryEventList events={telemetryPanel.summary?.recent_events ?? []} />
+                <RuleSummaryList rules={telemetryPanel.summary?.top_rules ?? []} />
+                <AgentSummaryList agents={telemetryPanel.summary?.top_agents ?? []} />
+                <TelemetryEvidenceSummary summary={telemetryPanel.summary?.evidence?.summary} />
+                <TelemetryGapList gaps={telemetryPanel.summary?.evidence?.evidence_gaps ?? []} />
+
+                <button
+                  onClick={refreshTelemetry}
+                  className="rounded-md border border-command-line px-3 py-2 text-sm font-medium text-neutral-700"
+                >
+                  Refresh Live Telemetry
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-command-line bg-white p-5 shadow-panel">
+            <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Learning Loop</h2>
               <Database className="text-command-signal" size={22} />
             </div>
@@ -843,6 +965,165 @@ function EvidenceFactList({ title, values }: { title: string; values: string[] }
           >
             {value}
           </p>
+        ))
+      )}
+    </div>
+  );
+}
+
+function SeverityBreakdown({ buckets }: { buckets: SeverityBucket[] }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">Severity Breakdown</p>
+      <div className="grid grid-cols-2 gap-2">
+        {buckets.length === 0 ? (
+          <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-600">
+            Loading severity data.
+          </p>
+        ) : (
+          buckets.map((bucket) => (
+            <div key={bucket.severity} className="rounded-md border border-command-line p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-xs uppercase text-neutral-500">{bucket.severity}</p>
+                <p className="text-xs text-neutral-500">{bucket.percentage}%</p>
+              </div>
+              <p className="mt-1 text-sm font-semibold text-command-ink">{bucket.count}</p>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TelemetryEventList({ events }: { events: TelemetryEvent[] }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">
+        Recent Security Events
+      </p>
+      {events.length === 0 ? (
+        <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-600">
+          No telemetry events loaded yet.
+        </p>
+      ) : (
+        events.slice(0, 5).map((event) => (
+          <div
+            key={`${event.event_id}-${event.timestamp}`}
+            className="rounded-md border border-command-line p-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-command-ink">
+                  {event.description ?? "Security event"}
+                </p>
+                <p className="mt-1 truncate text-xs text-neutral-600">
+                  Rule {event.rule_id ?? "unknown"} on {event.source_agent ?? "unknown"}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs uppercase text-neutral-500">
+                {event.severity ?? "unknown"}
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-neutral-600">{event.timestamp ?? "unknown time"}</p>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function RuleSummaryList({ rules }: { rules: RuleSummary[] }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">Top Rule IDs</p>
+      {rules.length === 0 ? (
+        <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-600">
+          No rule data loaded yet.
+        </p>
+      ) : (
+        rules.slice(0, 5).map((rule) => (
+          <div
+            key={`${rule.rule_id}-${rule.description}`}
+            className="flex items-start justify-between gap-3 rounded-md border border-command-line p-3"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-command-ink">{rule.rule_id}</p>
+              <p className="mt-1 truncate text-xs text-neutral-600">{rule.description}</p>
+            </div>
+            <span className="shrink-0 text-sm font-semibold text-neutral-700">
+              {rule.occurrence_count}
+            </span>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function AgentSummaryList({ agents }: { agents: AgentSummary[] }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">Top Agents</p>
+      {agents.length === 0 ? (
+        <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-600">
+          No agent data loaded yet.
+        </p>
+      ) : (
+        agents.slice(0, 5).map((agent) => (
+          <div
+            key={agent.agent_name}
+            className="flex items-center justify-between rounded-md border border-command-line p-3"
+          >
+            <p className="truncate text-sm font-medium text-command-ink">{agent.agent_name}</p>
+            <span className="text-sm font-semibold text-neutral-700">{agent.event_count}</span>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function TelemetryEvidenceSummary({
+  summary,
+}: {
+  summary?: TelemetryEvidenceSummaryData;
+}) {
+  const cards: Array<[string, number]> = [
+    ["High", summary?.high_confidence ?? 0],
+    ["Medium", summary?.medium_confidence ?? 0],
+    ["Low", summary?.low_confidence ?? 0],
+  ];
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">Evidence Summary</p>
+      <div className="grid grid-cols-3 gap-2">
+        {cards.map(([label, count]) => (
+          <div key={label} className="rounded-md border border-command-line p-3">
+            <p className="text-xs uppercase text-neutral-500">{label}</p>
+            <p className="mt-1 text-sm font-semibold text-command-ink">{count}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TelemetryGapList({ gaps }: { gaps: TelemetryGap[] }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">Evidence Gaps Panel</p>
+      {gaps.length === 0 ? (
+        <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-600">
+          No telemetry evidence gaps loaded yet.
+        </p>
+      ) : (
+        gaps.slice(0, 4).map((gap) => (
+          <div key={gap.evidence_id} className="rounded-md border border-command-line p-3">
+            <p className="text-sm font-medium text-command-ink">{gap.title}</p>
+            <p className="mt-1 text-xs text-neutral-600">{gap.evidence_id}</p>
+            <p className="mt-2 text-sm leading-5 text-neutral-700">{gap.explanation}</p>
+          </div>
         ))
       )}
     </div>
