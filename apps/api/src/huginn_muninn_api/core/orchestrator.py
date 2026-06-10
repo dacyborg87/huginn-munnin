@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 from core.decision_engine import DecisionEngine
@@ -5,6 +6,7 @@ from core.event_bus import Event, EventBus, EventType
 from core.intelligence_graph import Graph, GraphContext, Node, Transition
 from core.outcome_tracker import OutcomeResult, OutcomeTracker
 from core.reasoning_patterns import ContextSignature, ReasoningPatternEngine
+from huginn_muninn_api.core.intelligence_context import IntelligenceContextBuilder
 from huginn_muninn_api.huginn.engine import HuginnEngine
 from huginn_muninn_api.huginn.security import CybersecurityEngine
 from huginn_muninn_api.muninn.memory import MuninnMemory
@@ -22,6 +24,9 @@ class Orchestrator:
         self.decision_engine = DecisionEngine()
         self.outcome_tracker = OutcomeTracker()
         self.reasoning_patterns = ReasoningPatternEngine()
+        self.intelligence_context = IntelligenceContextBuilder(
+            Path(__file__).resolve().parents[5]
+        )
         self.graph = self._build_graph()
         self._register_handlers()
 
@@ -32,6 +37,15 @@ class Orchestrator:
                 "message": request.message,
                 "namespace": request.namespace,
                 "voice_invocation": request.voice_invocation,
+            },
+        )
+        await self.event_bus.emit(
+            EventType.AI_CONTEXT_ENRICHED,
+            {
+                "command_event_id": event_id,
+                "message": request.message,
+                "namespace": request.namespace,
+                "intelligence_context": self.intelligence_context.build(request.message),
             },
         )
         return ChatAcceptedResponse(status="accepted", event_id=event_id)

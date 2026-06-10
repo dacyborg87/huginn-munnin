@@ -1,8 +1,21 @@
 from time import sleep
 
+import pytest
 from fastapi.testclient import TestClient
 
-from huginn_muninn_api.main import app
+from core.outcome_tracker import OutcomeTracker
+from core.reasoning_patterns import ReasoningPatternEngine
+from huginn_muninn_api.muninn.memory import MuninnMemory
+from huginn_muninn_api.main import app, orchestrator
+
+
+@pytest.fixture(autouse=True)
+def isolate_reasoning_patterns(tmp_path):
+    orchestrator.muninn = MuninnMemory()
+    orchestrator.outcome_tracker = OutcomeTracker()
+    orchestrator.reasoning_patterns = ReasoningPatternEngine(
+        storage_path=tmp_path / "reasoning_patterns.json"
+    )
 
 
 def event_types(client: TestClient) -> list[str]:
@@ -90,6 +103,7 @@ def test_chat_accepts_command_and_runs_intelligence_graph() -> None:
 
         expected = {
             "USER_COMMAND_RECEIVED",
+            "AI_CONTEXT_ENRICHED",
             "AI_THINKING_STARTED",
             "AI_DECISION_MADE",
             "AI_TASK_EXECUTING",
@@ -109,7 +123,32 @@ def test_chat_accepts_command_and_runs_intelligence_graph() -> None:
         assert selected_state_for_command(client, body["event_id"]) == "TOOL_USE"
 
 
-def test_memory_context_changes_branch_for_similar_command() -> None:
+def test_chat_emits_enriched_intelligence_context() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/chat",
+            json={"message": "Hey Huginn, investigate T1078 valid account activity."},
+        )
+        assert response.status_code == 200
+        command_event_id = response.json()["event_id"]
+
+        context_payload: dict | None = None
+        for _ in range(20):
+            context_payload = event_payload_for_command(
+                client, command_event_id, "AI_CONTEXT_ENRICHED"
+            )
+            if context_payload is not None:
+                break
+            sleep(0.05)
+
+        assert context_payload is not None
+        intelligence_context = context_payload["intelligence_context"]
+        assert intelligence_context["summary"]["entity_searched"] == "knowledge_graph"
+        assert intelligence_context["detected_entities"] == ["T1078"]
+        assert intelligence_context["related_entities"]["T1078"]["connected_entities"]
+
+
+def test_memory_context_changes_branch_for_similar_command(tmp_path) -> None:
     namespace = "branching-test"
     message = "Continue project work"
 
@@ -126,6 +165,9 @@ def test_memory_context_changes_branch_for_similar_command() -> None:
             sleep(0.05)
 
         assert first_state == "PLANNING"
+        orchestrator.reasoning_patterns = ReasoningPatternEngine(
+            storage_path=tmp_path / "memory_branch_patterns.json"
+        )
 
         memory_response = client.post(
             "/memory",

@@ -27,3 +27,4 @@ apps/api/.venv/
 apps/api/.venv*/
 apps/web/node_modules/
 apps/web/.next/
+.codegraph/
