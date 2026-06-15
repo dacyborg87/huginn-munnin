@@ -17,7 +17,7 @@ from core.graph_intelligence import GraphIntelligence  # noqa: E402
 
 
 def intelligence() -> GraphIntelligence:
-    return GraphIntelligence(GraphContextBuilder().build(persist=False))
+    return GraphIntelligence(GraphContextBuilder(REPOSITORY_ROOT).build(persist=False))
 
 
 def test_find_related_entities_returns_direct_neighbors() -> None:

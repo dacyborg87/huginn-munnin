@@ -30,7 +30,7 @@ def test_knowledge_graph_accepts_required_node_and_relationship_types() -> None:
 
 
 def test_graph_context_builder_generates_sample_graph_from_reports() -> None:
-    graph = GraphContextBuilder().build(persist=False)
+    graph = GraphContextBuilder(REPOSITORY_ROOT).build(persist=False)
     summary = graph.summary()
 
     assert summary["total_nodes"] > 0
