@@ -28,8 +28,12 @@ live_telemetry_api = LiveTelemetryApi(repository_root)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await event_bus.start()
-    yield
-    await event_bus.stop()
+    await live_telemetry_api.start_polling()
+    try:
+        yield
+    finally:
+        await live_telemetry_api.stop_polling()
+        await event_bus.stop()
 
 app = FastAPI(
     title="HUGINN // MUNINN API",
@@ -164,3 +168,8 @@ def dashboard_agents() -> dict:
 @app.get("/dashboard/evidence")
 def dashboard_evidence() -> dict:
     return live_telemetry_api.evidence()
+
+
+@app.get("/dashboard/last-updated")
+def dashboard_last_updated() -> dict:
+    return live_telemetry_api.last_updated()

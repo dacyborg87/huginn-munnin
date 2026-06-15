@@ -2,21 +2,73 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections import Counter
+from collections.abc import Callable
+from datetime import UTC, datetime
 import json
+import logging
 from pathlib import Path
 import re
 from typing import Any
 
 
 SEVERITY_ORDER = ["critical", "high", "medium", "low", "informational"]
+LOGGER = logging.getLogger(__name__)
 
 
 class LiveTelemetryApi:
     """Build dashboard-ready telemetry summaries from existing JSON reports."""
 
-    def __init__(self, repository_root: Path | str) -> None:
+    def __init__(
+        self,
+        repository_root: Path | str,
+        poll_interval: float = 30.0,
+        clock: Callable[[], str] | None = None,
+    ) -> None:
         self.repository_root = Path(repository_root)
+        self.poll_interval = poll_interval
+        self._clock = clock or (lambda: datetime.now(UTC).isoformat())
+        self.pipeline_report_path = (
+            self.repository_root / "reports" / "real-data-pipeline-output.json"
+        )
+        self._pipeline_cache: dict[str, Any] = {"evidence_records": []}
+        self._last_successful_reload: str | None = None
+        self._last_reload_error: str | None = None
+        self._poll_task: asyncio.Task[None] | None = None
+
+    async def start_polling(self) -> None:
+        """Start background report polling and load the first snapshot."""
+
+        self.reload_pipeline_report()
+        if self._poll_task is None or self._poll_task.done():
+            self._poll_task = asyncio.create_task(self._poll_loop())
+
+    async def stop_polling(self) -> None:
+        """Stop the background report polling task."""
+
+        if self._poll_task is None:
+            return
+        self._poll_task.cancel()
+        try:
+            await self._poll_task
+        except asyncio.CancelledError:
+            pass
+        self._poll_task = None
+
+    def last_updated(self) -> dict[str, Any]:
+        return {
+            "entity_searched": "live_telemetry_report",
+            "last_successful_reload": self._last_successful_reload,
+            "last_reload_error": self._last_reload_error,
+            "poll_interval_seconds": self.poll_interval,
+            "source_path": str(self.pipeline_report_path),
+            "cache_status": self._cache_status(),
+            "explanation": (
+                "This timestamp records the last successful reload of the Wazuh "
+                "pipeline report used by the dashboard telemetry API."
+            ),
+        }
 
     def summary(self) -> dict[str, Any]:
         events = self.events()["events"]
@@ -127,8 +179,57 @@ class LiveTelemetryApi:
         ]
 
     def _pipeline_payload(self) -> dict[str, Any]:
-        path = self.repository_root / "reports" / "real-data-pipeline-output.json"
-        return self._read_json(path, default={"evidence_records": []})
+        if self._last_successful_reload is None:
+            self.reload_pipeline_report()
+        return self._pipeline_cache
+
+    def reload_pipeline_report(self) -> bool:
+        """Reload the Wazuh pipeline report, preserving the last good cache on failure."""
+
+        try:
+            payload = json.loads(self.pipeline_report_path.read_text(encoding="utf-8"))
+        except OSError as error:
+            self._last_reload_error = str(error)
+            LOGGER.warning(
+                "Unable to reload live telemetry report from %s: %s",
+                self.pipeline_report_path,
+                error,
+            )
+            return False
+        except json.JSONDecodeError as error:
+            self._last_reload_error = str(error)
+            LOGGER.warning(
+                "Malformed live telemetry report at %s: %s",
+                self.pipeline_report_path,
+                error,
+            )
+            return False
+
+        if not isinstance(payload, dict):
+            self._last_reload_error = "expected JSON object"
+            LOGGER.warning(
+                "Malformed live telemetry report at %s: expected JSON object",
+                self.pipeline_report_path,
+            )
+            return False
+
+        self._pipeline_cache = payload
+        self._last_successful_reload = self._clock()
+        self._last_reload_error = None
+        return True
+
+    async def _poll_loop(self) -> None:
+        while True:
+            await asyncio.sleep(self.poll_interval)
+            self.reload_pipeline_report()
+
+    def _cache_status(self) -> str:
+        records = self._pipeline_cache.get("evidence_records", [])
+        if self._last_successful_reload is None:
+            return "empty"
+        if self._last_reload_error:
+            return "stale"
+        return "ready" if records else "ready_empty"
 
     def _graph_events(self) -> list[dict[str, Any]]:
         path = self.repository_root / "reports" / "knowledge-graph.json"
