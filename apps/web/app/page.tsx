@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Activity, BrainCircuit, Database, Mic, Radar, Send, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Children, type ReactNode, useCallback, useEffect, useState } from "react";
 
 type ChatAcceptedResponse = {
   status: string;
@@ -98,6 +98,7 @@ type EvidenceSummaryResponse = {
     confidence_counts?: Record<string, number>;
   };
   evidence_records?: EvidenceRecord[];
+  evidence_gaps?: TelemetryGap[];
   explanation?: string;
 };
 
@@ -175,11 +176,31 @@ type TelemetryPanelState = {
   status: "loading" | "ready" | "error";
 };
 
+type SelectedEvent = TelemetryEvent | string;
+
+type TechniqueDetail = {
+  id: string;
+  name: string;
+};
+
+type FieldStatus<T> = {
+  data: T;
+  error?: string;
+};
+
+type IntelligenceDetailState = {
+  status: "idle" | "loading" | "ready";
+  techniques: FieldStatus<TechniqueDetail[]>;
+  evidence: FieldStatus<EvidenceRecord[]>;
+  gaps: FieldStatus<TelemetryGap[]>;
+};
+
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const sampleTechniqueId = "T1078";
 const sampleEventId = "f26fa03a-6c8e-44ca-b906-12c974dcbcbf";
 const sampleWeaknessId = "15953a2c-3b98-4640-9401-1306f95162e3";
 const sampleRecommendationId = "design.post_auth_telemetry_layer";
+const emptyTelemetryGaps: TelemetryGap[] = [];
 
 const systems = [
   { label: "Huginn", detail: "Thought Engine", icon: BrainCircuit, status: "online" },
@@ -218,6 +239,7 @@ export default function Home() {
     summary: null,
     status: "loading",
   });
+  const [selectedEvent, setSelectedEvent] = useState<SelectedEvent | null>(null);
 
   const latestDecision = events
     .slice()
@@ -753,8 +775,26 @@ export default function Home() {
                 </div>
 
                 <SeverityBreakdown buckets={telemetryPanel.summary?.severity_breakdown ?? []} />
-                <TelemetryEventList events={telemetryPanel.summary?.recent_events ?? []} />
-                <RuleSummaryList rules={telemetryPanel.summary?.top_rules ?? []} />
+                <TelemetryEventList
+                  events={telemetryPanel.summary?.recent_events ?? []}
+                  selectedEvent={selectedEvent}
+                  onSelect={setSelectedEvent}
+                />
+                <RuleSummaryList
+                  rules={telemetryPanel.summary?.top_rules ?? []}
+                  selectedEvent={selectedEvent}
+                  onSelect={setSelectedEvent}
+                />
+                {selectedEvent && (
+                  <IntelligenceDetailPanel
+                    selectedEvent={selectedEvent}
+                    recentEvents={telemetryPanel.summary?.recent_events ?? []}
+                    evidenceGaps={
+                      telemetryPanel.summary?.evidence?.evidence_gaps ?? emptyTelemetryGaps
+                    }
+                    onClose={() => setSelectedEvent(null)}
+                  />
+                )}
                 <AgentSummaryList agents={telemetryPanel.summary?.top_agents ?? []} />
                 <TelemetryEvidenceSummary summary={telemetryPanel.summary?.evidence?.summary} />
                 <TelemetryGapList gaps={telemetryPanel.summary?.evidence?.evidence_gaps ?? []} />
@@ -996,7 +1036,15 @@ function SeverityBreakdown({ buckets }: { buckets: SeverityBucket[] }) {
   );
 }
 
-function TelemetryEventList({ events }: { events: TelemetryEvent[] }) {
+function TelemetryEventList({
+  events,
+  selectedEvent,
+  onSelect,
+}: {
+  events: TelemetryEvent[];
+  selectedEvent: SelectedEvent | null;
+  onSelect: (event: TelemetryEvent) => void;
+}) {
   return (
     <div className="grid gap-2">
       <p className="text-xs font-semibold uppercase text-neutral-500">
@@ -1008,9 +1056,14 @@ function TelemetryEventList({ events }: { events: TelemetryEvent[] }) {
         </p>
       ) : (
         events.slice(0, 5).map((event) => (
-          <div
+          <button
             key={`${event.event_id}-${event.timestamp}`}
-            className="rounded-md border border-command-line p-3"
+            onClick={() => onSelect(event)}
+            className={`rounded-md border p-3 text-left transition ${
+              isSelectedTelemetryEvent(selectedEvent, event)
+                ? "border-command-signal bg-command-panel"
+                : "border-command-line bg-white hover:bg-command-panel"
+            }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -1026,14 +1079,22 @@ function TelemetryEventList({ events }: { events: TelemetryEvent[] }) {
               </span>
             </div>
             <p className="mt-2 text-xs text-neutral-600">{event.timestamp ?? "unknown time"}</p>
-          </div>
+          </button>
         ))
       )}
     </div>
   );
 }
 
-function RuleSummaryList({ rules }: { rules: RuleSummary[] }) {
+function RuleSummaryList({
+  rules,
+  selectedEvent,
+  onSelect,
+}: {
+  rules: RuleSummary[];
+  selectedEvent: SelectedEvent | null;
+  onSelect: (ruleId: string) => void;
+}) {
   return (
     <div className="grid gap-2">
       <p className="text-xs font-semibold uppercase text-neutral-500">Top Rule IDs</p>
@@ -1043,9 +1104,14 @@ function RuleSummaryList({ rules }: { rules: RuleSummary[] }) {
         </p>
       ) : (
         rules.slice(0, 5).map((rule) => (
-          <div
+          <button
             key={`${rule.rule_id}-${rule.description}`}
-            className="flex items-start justify-between gap-3 rounded-md border border-command-line p-3"
+            onClick={() => onSelect(rule.rule_id)}
+            className={`flex items-start justify-between gap-3 rounded-md border p-3 text-left transition ${
+              selectedEvent === rule.rule_id
+                ? "border-command-signal bg-command-panel"
+                : "border-command-line bg-white hover:bg-command-panel"
+            }`}
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-command-ink">{rule.rule_id}</p>
@@ -1054,10 +1120,347 @@ function RuleSummaryList({ rules }: { rules: RuleSummary[] }) {
             <span className="shrink-0 text-sm font-semibold text-neutral-700">
               {rule.occurrence_count}
             </span>
-          </div>
+          </button>
         ))
       )}
     </div>
+  );
+}
+
+function IntelligenceDetailPanel({
+  selectedEvent,
+  recentEvents,
+  evidenceGaps,
+  onClose,
+}: {
+  selectedEvent: SelectedEvent;
+  recentEvents: TelemetryEvent[];
+  evidenceGaps: TelemetryGap[];
+  onClose: () => void;
+}) {
+  const selectedContext = eventContext(selectedEvent, recentEvents);
+  const [detail, setDetail] = useState<IntelligenceDetailState>({
+    status: "loading",
+    techniques: { data: [] },
+    evidence: { data: [] },
+    gaps: { data: [] },
+  });
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadDetail() {
+      setDetail({
+        status: "loading",
+        techniques: { data: [] },
+        evidence: { data: [] },
+        gaps: { data: [] },
+      });
+
+      const relatedRequest = fetchJson<GraphQueryResponse>(
+        `${apiUrl}/graph/related/${encodeURIComponent(selectedContext.ruleId)}`,
+      );
+      const evidenceSummaryRequest = fetchJson<EvidenceSummaryResponse>(
+        `${apiUrl}/evidence/summary`,
+      );
+
+      const [relatedResult, evidenceSummaryResult] = await Promise.all([
+        settleRequest(relatedRequest),
+        settleRequest(evidenceSummaryRequest),
+      ]);
+
+      const techniqueField: FieldStatus<TechniqueDetail[]> = relatedResult.ok
+        ? {
+            data: extractTechniques(relatedResult.data.connected_entities ?? []),
+          }
+        : { data: [], error: relatedResult.error };
+
+      const evidenceResults = await Promise.all(
+        techniqueField.data.map((technique) =>
+          settleRequest(
+            fetchJson<EvidenceQueryResponse>(
+              `${apiUrl}/evidence/mitre/${encodeURIComponent(technique.id)}`,
+            ),
+          ),
+        ),
+      );
+      const evidenceRecords = evidenceResults.flatMap((result) =>
+        result.ok ? result.data.evidence_records ?? [] : [],
+      );
+      const failedEvidenceResult = evidenceResults.find(
+        (result): result is { ok: false; error: string } => !result.ok,
+      );
+      const evidenceError = failedEvidenceResult?.error;
+
+      const summaryGaps = evidenceSummaryResult.ok
+        ? evidenceSummaryResult.data.evidence_gaps ?? []
+        : [];
+      const relevantGaps = relevantEvidenceGaps(
+        [...summaryGaps, ...evidenceGaps],
+        selectedContext.ruleId,
+        techniqueField.data.map((technique) => technique.id),
+      );
+
+      if (!isCurrent) {
+        return;
+      }
+
+      setDetail({
+        status: "ready",
+        techniques: techniqueField,
+        evidence: {
+          data: evidenceRecords,
+          error: evidenceError,
+        },
+        gaps: {
+          data: relevantGaps,
+          error: evidenceSummaryResult.ok ? undefined : evidenceSummaryResult.error,
+        },
+      });
+    }
+
+    void loadDetail();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [selectedContext.ruleId, evidenceGaps]);
+
+  const highestConfidence = highestConfidenceLevel(detail.evidence.data);
+  const primaryTechnique = detail.techniques.data[0];
+  const gapDescription = detail.gaps.data[0]?.explanation ?? detail.gaps.data[0]?.title;
+  const explanation = `This event matches ${
+    primaryTechnique?.name ?? "an unmapped rule"
+  }. ${detail.evidence.data.length} evidence record(s) support this finding with ${
+    highestConfidence ?? "no"
+  } confidence. ${gapDescription ?? "No evidence gaps detected."}`;
+
+  return (
+    <div className="rounded-md border border-command-line bg-white p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase text-neutral-500">
+            Event Intelligence Detail
+          </p>
+          <h3 className="mt-1 text-base font-semibold text-command-ink">
+            Rule {selectedContext.ruleId}
+          </h3>
+        </div>
+        <button
+          onClick={onClose}
+          className="rounded-md border border-command-line px-3 py-1.5 text-xs font-medium text-neutral-700"
+        >
+          Close
+        </button>
+      </div>
+
+      {detail.status === "loading" && (
+        <p className="mb-3 rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-600">
+          Loading intelligence context.
+        </p>
+      )}
+
+      <div className="grid gap-4">
+        <div className="rounded-md border border-command-line bg-command-panel p-3">
+          <p className="text-xs font-semibold uppercase text-neutral-500">Event Summary</p>
+          <div className="mt-2 grid gap-1 text-sm text-neutral-700">
+            <p>Rule ID: {selectedContext.ruleId}</p>
+            <p>Host: {selectedContext.host}</p>
+            <p>Severity: {selectedContext.severity}</p>
+            <p>Timestamp: {selectedContext.timestamp}</p>
+          </div>
+        </div>
+
+        <DetailSection
+          title="MITRE Techniques"
+          error={detail.techniques.error}
+          emptyMessage="No MITRE technique mapping found for this rule."
+        >
+          {detail.techniques.data.map((technique) => (
+            <div key={technique.id} className="rounded-md border border-command-line p-3">
+              <p className="text-sm font-medium text-command-ink">{technique.id}</p>
+              <p className="mt-1 text-sm text-neutral-700">{technique.name}</p>
+            </div>
+          ))}
+        </DetailSection>
+
+        <DetailSection
+          title="Evidence Records"
+          error={detail.evidence.error}
+          emptyMessage="No evidence records linked to this technique."
+        >
+          {detail.evidence.data.map((record) => (
+            <div key={record.evidence_id} className="rounded-md border border-command-line p-3">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-medium text-command-ink">{record.title}</p>
+                <span className="shrink-0 text-xs uppercase text-neutral-500">
+                  {record.confidence.level} {Math.round(record.confidence.score * 100)}%
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-5 text-neutral-700">{record.summary}</p>
+            </div>
+          ))}
+        </DetailSection>
+
+        <DetailSection
+          title="Evidence Gaps"
+          error={detail.gaps.error}
+          emptyMessage="No evidence gaps detected for this event."
+        >
+          {detail.gaps.data.map((gap, index) => (
+            <div
+              key={gap.evidence_id ?? gap.title ?? gap.explanation ?? `evidence-gap-${index}`}
+              className="rounded-md border border-command-line p-3"
+            >
+              <p className="text-sm font-medium text-command-ink">
+                {gap.title ?? "Evidence gap"}
+              </p>
+              <p className="mt-2 text-sm leading-5 text-neutral-700">
+                {gap.explanation ?? gap.reasons?.join(", ") ?? "Evidence gap requires review."}
+              </p>
+            </div>
+          ))}
+        </DetailSection>
+
+        <div className="rounded-md border border-command-line bg-command-panel p-3">
+          <p className="text-xs font-semibold uppercase text-neutral-500">
+            Plain-English Explanation
+          </p>
+          <p className="mt-2 text-sm leading-5 text-neutral-700">{explanation}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailSection({
+  title,
+  error,
+  emptyMessage,
+  children,
+}: {
+  title: string;
+  error?: string;
+  emptyMessage: string;
+  children: ReactNode;
+}) {
+  const childItems = Children.toArray(children);
+
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-neutral-500">{title}</p>
+      {error && (
+        <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-command-alert">
+          {error}
+        </p>
+      )}
+      {childItems.length === 0 ? (
+        <p className="rounded-md border border-command-line bg-command-panel p-3 text-sm text-neutral-600">
+          {emptyMessage}
+        </p>
+      ) : (
+        childItems
+      )}
+    </div>
+  );
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+async function settleRequest<T>(
+  request: Promise<T>,
+): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  try {
+    return { ok: true, data: await request };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Request failed.",
+    };
+  }
+}
+
+function eventContext(selectedEvent: SelectedEvent, recentEvents: TelemetryEvent[]) {
+  const matchedEvent =
+    typeof selectedEvent === "string"
+      ? recentEvents.find((event) => event.rule_id === selectedEvent)
+      : selectedEvent;
+  const ruleId = typeof selectedEvent === "string" ? selectedEvent : selectedEvent.rule_id;
+
+  return {
+    ruleId: ruleId || "unknown",
+    host: matchedEvent?.source_agent || "unknown",
+    severity: matchedEvent?.severity || "unknown",
+    timestamp: matchedEvent?.timestamp || "unknown time",
+  };
+}
+
+function extractTechniques(entities: GraphEntity[]): TechniqueDetail[] {
+  return entities
+    .filter((entity) => normalizeEntityType(entity.type) === "mitre_technique")
+    .map((entity) => {
+      const id = entity.id.replace(/^mitre:/, "");
+      return {
+        id,
+        name: entity.label.replace(new RegExp(`^${id}\\s*`), "") || entity.label,
+      };
+    });
+}
+
+function relevantEvidenceGaps(
+  gaps: TelemetryGap[],
+  ruleId: string,
+  techniqueIds: string[],
+): TelemetryGap[] {
+  const selectors = [ruleId, ...techniqueIds].filter(Boolean).map((value) => value.toLowerCase());
+  const seen = new Set<string>();
+  return gaps.filter((gap) => {
+    const searchable = [
+      gap.evidence_id,
+      gap.title,
+      gap.explanation,
+      ...(gap.reasons ?? []),
+    ]
+      .join(" ")
+      .toLowerCase();
+    const matches = selectors.some((selector) => searchable.includes(selector));
+    const key = gap.evidence_id ?? gap.title ?? gap.explanation ?? searchable;
+    if (!matches || seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function highestConfidenceLevel(records: EvidenceRecord[]): string | null {
+  if (records.length === 0) {
+    return null;
+  }
+  const ranked = [...records].sort(
+    (left, right) => (right.confidence.score ?? 0) - (left.confidence.score ?? 0),
+  );
+  return ranked[0]?.confidence.level ?? null;
+}
+
+function normalizeEntityType(type: string) {
+  return type.toLowerCase().replaceAll(" ", "_");
+}
+
+function isSelectedTelemetryEvent(selectedEvent: SelectedEvent | null, event: TelemetryEvent) {
+  if (!selectedEvent || typeof selectedEvent === "string") {
+    return false;
+  }
+  return (
+    selectedEvent.event_id === event.event_id &&
+    selectedEvent.timestamp === event.timestamp &&
+    selectedEvent.rule_id === event.rule_id
   );
 }
 
