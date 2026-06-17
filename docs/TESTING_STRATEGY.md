@@ -169,6 +169,53 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/ -p no:anyio -x --tb=short
 If this fails, inspect the first failure and determine whether it touches the
 current change.
 
+## Single Command Stable Test Run
+
+Use this command for the current known-good backend test run that avoids local
+FastAPI/TestClient collection hangs:
+
+```bash
+cd apps/api
+PYTHONPATH=src .venv/bin/python -m pytest tests/ \
+  -p no:anyio \
+  --ignore=tests/test_api.py \
+  --ignore=tests/test_graph_api.py \
+  --ignore=tests/test_evidence_api.py \
+  -q
+```
+
+Current result:
+
+```text
+78 passed
+```
+
+Excluded files:
+
+- `tests/test_api.py`
+- `tests/test_graph_api.py`
+- `tests/test_evidence_api.py`
+
+Why these are excluded:
+
+These files import `fastapi.testclient.TestClient`. In this local environment,
+that import path can pull in FastAPI, Starlette, HTTPX, IDNA, AnyIO, and
+Pydantic during collection and may hang before project test code runs.
+
+The stable command still covers:
+
+- Knowledge Graph
+- Graph Intelligence
+- Evidence schema, builder, and query
+- Wazuh parser
+- Graph ingest
+- Real data evidence
+- Wazuh file reader
+- Wazuh file-to-intelligence pipeline
+- Wazuh ingestion API
+- Live telemetry API
+- Intelligence context builder
+
 ## Graph Test Fixture Rules
 
 Graph tests should:

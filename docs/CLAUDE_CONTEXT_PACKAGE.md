@@ -340,6 +340,34 @@ Completed:
 - Dashboard section for live telemetry visibility
 - severity, rule, agent, evidence, and gap summaries
 
+### Milestone 5A: Near-Live Telemetry Refresh
+
+Completed:
+
+- API-side report polling every 30 seconds
+- last successful reload and reload error tracking
+- `GET /dashboard/last-updated`
+- stale-cache behavior for missing or malformed reports
+
+### Milestone 5B: Interactive Intelligence Dashboard
+
+Completed:
+
+- clickable Recent Events rows
+- clickable Top Rule IDs rows
+- event intelligence detail panel
+- MITRE, evidence, gap, and plain-English explanation display
+
+### Milestone 5C: Wazuh Ingestion API
+
+Completed:
+
+- `POST /ingest/wazuh`
+- single-alert and list ingestion
+- Wazuh parser to EventRecord runtime path
+- graph ingest and real-data evidence generation
+- live telemetry report update for dashboard refresh
+
 ### Milestone 6: Chat Intelligence Context Enrichment
 
 Completed:
@@ -402,10 +430,10 @@ evidence_gaps_created: 1
 
 ## Current Test Counts
 
-Latest focused regression result:
+Latest stable focused backend result:
 
 ```text
-85 focused tests passing
+78 tests passing
 ```
 
 Validated areas:
@@ -422,9 +450,21 @@ Validated areas:
 - Real data evidence
 - Wazuh file reader
 - Wazuh pipeline
+- Wazuh ingestion API
 - Live telemetry API
 - Intelligence context builder
-- Chat orchestration events
+
+Known excluded API endpoint tests:
+
+```text
+tests/test_api.py
+tests/test_graph_api.py
+tests/test_evidence_api.py
+```
+
+These are excluded from the stable command because they import
+`fastapi.testclient.TestClient`, which can hang during local collection in this
+environment.
 
 ## Key API Endpoints
 
@@ -483,6 +523,13 @@ GET /dashboard/events
 GET /dashboard/rules
 GET /dashboard/agents
 GET /dashboard/evidence
+GET /dashboard/last-updated
+```
+
+Runtime ingest:
+
+```text
+POST /ingest/wazuh
 ```
 
 ## Dashboard Capabilities
@@ -653,6 +700,8 @@ Current limitations:
 - Suricata live ingest is not implemented.
 - Wazuh live file watching is not implemented.
 - Wazuh NDJSON support is still a recommended next step.
+- Wazuh runtime ingest exists, but authentication and append/merge history are
+  not implemented yet.
 - Real Wazuh alert files must not be committed.
 - Raw private telemetry must be sanitized before screenshots or portfolio use.
 - The local Homebrew Node environment has had build instability; use Node 22.
@@ -662,8 +711,16 @@ Current limitations:
 
 Recommended next phases:
 
-1. Wazuh NDJSON Support
-2. Controlled Wazuh Ingestion API
+Completed:
+
+- 5A: Near-Live Telemetry Refresh
+- 5B: Interactive Intelligence Dashboard
+- 5C: Wazuh Ingestion API
+
+Recommended next phases:
+
+1. Authenticated Wazuh ingestion and local allowlist
+2. Wazuh NDJSON support
 3. Evidence Query Dashboard Enhancements
 4. Telemetry Gap Detection
 5. Suricata Parser
