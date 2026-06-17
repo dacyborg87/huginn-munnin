@@ -2,7 +2,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from typing import Any
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.event_bus import EventBus
@@ -11,6 +13,7 @@ from huginn_muninn_api.core.evidence_api import EvidenceApi
 from huginn_muninn_api.core.graph_intelligence_api import GraphIntelligenceApi
 from huginn_muninn_api.core.live_telemetry_api import LiveTelemetryApi
 from huginn_muninn_api.core.orchestrator import Orchestrator
+from huginn_muninn_api.core.wazuh_ingest_api import WazuhIngestApi
 from huginn_muninn_api.schemas.chat import ChatAcceptedResponse, ChatRequest
 from huginn_muninn_api.schemas.events import EventLogEntry
 from huginn_muninn_api.schemas.memory import MemoryRecord, MemorySearchRequest
@@ -23,6 +26,7 @@ repository_root = Path(__file__).resolve().parents[4]
 graph_intelligence = GraphIntelligenceApi(repository_root)
 evidence_api = EvidenceApi(repository_root)
 live_telemetry_api = LiveTelemetryApi(repository_root)
+wazuh_ingest_api = WazuhIngestApi(repository_root)
 
 
 @asynccontextmanager
@@ -74,6 +78,16 @@ def search_memory(request: MemorySearchRequest) -> list[MemoryRecord]:
 @app.post("/security/analyze", response_model=SecurityAnalysisResponse)
 def analyze_security(request: SecurityAnalysisRequest) -> SecurityAnalysisResponse:
     return orchestrator.analyze_security(request)
+
+
+@app.post("/ingest/wazuh")
+def ingest_wazuh(payload: dict[str, Any] | list[Any]) -> dict[str, Any]:
+    try:
+        return wazuh_ingest_api.ingest(payload)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
 
 
 @app.get("/events", response_model=list[EventLogEntry])
