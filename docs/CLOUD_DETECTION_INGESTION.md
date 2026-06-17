@@ -99,3 +99,35 @@ future reviewers can verify why the technique is attached.
 5. Add a parser method for one finding and another method for a list of findings.
 6. Add synthetic direct unit tests under `apps/api/tests/`.
 7. Document field mapping, severity handling, MITRE lookup, and limitations.
+
+## GuardDuty Ingestion API
+
+`POST /ingest/guardduty` is the controlled runtime entry point for AWS
+GuardDuty findings. It accepts either one GuardDuty finding object or a list of
+finding objects, normalizes them with the existing GuardDuty parser, ingests the
+resulting events into the Knowledge Graph, and generates Evidence Layer records.
+
+The endpoint returns a compact ingestion summary:
+
+```json
+{
+  "status": "accepted",
+  "source": "aws_guardduty",
+  "records_received": 1,
+  "records_parsed": 1,
+  "records_skipped": 0,
+  "events_added": 1,
+  "techniques_added": 1,
+  "evidence_records_created": 1,
+  "evidence_gaps_created": 0,
+  "message": "Ingestion complete. Dashboard will refresh within 30 seconds."
+}
+```
+
+The API writes the existing live telemetry report format to
+`reports/real-data-pipeline-output.json`, so the dashboard can display the
+latest cloud finding data through the same near-live polling path used by Wazuh.
+
+Known limitation: each GuardDuty ingest call overwrites the current telemetry
+report. Multi-source report merging is a future enhancement. The endpoint does
+not call AWS, does not require an AWS SDK, and does not add authentication yet.

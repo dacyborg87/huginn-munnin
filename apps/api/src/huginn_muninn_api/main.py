@@ -11,6 +11,7 @@ from core.event_bus import EventBus
 from huginn_muninn_api.core.config import Settings
 from huginn_muninn_api.core.evidence_api import EvidenceApi
 from huginn_muninn_api.core.graph_intelligence_api import GraphIntelligenceApi
+from huginn_muninn_api.core.guardduty_ingest_api import GuardDutyIngestApi
 from huginn_muninn_api.core.live_telemetry_api import LiveTelemetryApi
 from huginn_muninn_api.core.orchestrator import Orchestrator
 from huginn_muninn_api.core.wazuh_ingest_api import WazuhIngestApi
@@ -27,6 +28,7 @@ graph_intelligence = GraphIntelligenceApi(repository_root)
 evidence_api = EvidenceApi(repository_root)
 live_telemetry_api = LiveTelemetryApi(repository_root)
 wazuh_ingest_api = WazuhIngestApi(repository_root)
+guardduty_ingest_api = GuardDutyIngestApi(repository_root)
 
 
 @asynccontextmanager
@@ -84,6 +86,16 @@ def analyze_security(request: SecurityAnalysisRequest) -> SecurityAnalysisRespon
 def ingest_wazuh(payload: dict[str, Any] | list[Any]) -> dict[str, Any]:
     try:
         return wazuh_ingest_api.ingest(payload)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+
+@app.post("/ingest/guardduty")
+def ingest_guardduty(payload: dict[str, Any] | list[Any]) -> dict[str, Any]:
+    try:
+        return guardduty_ingest_api.ingest(payload)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except Exception as error:
