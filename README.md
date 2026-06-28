@@ -1,226 +1,168 @@
-# HUGINN // MUNINN
+# Huginn/Muninn
 
-## AI-Powered Defensive Intelligence Platform
+Defensive intelligence connecting security telemetry, evidence, context, and analyst decisions.
 
-A graph-driven cybersecurity platform designed to help analysts connect events, understand attack paths, retain context, and generate explainable defensive recommendations.
+![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) ![Next.js 15](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-Huginn // Muninn is an early-stage defensive intelligence system for security analysis, threat correlation, memory-driven learning, and evidence-backed decision support. The platform is designed to transform isolated security observations into connected operational context that can support investigations, reporting, and future AI-assisted SOC workflows.
+Huginn/Muninn ingests security telemetry from multiple sources, normalizes detections into a common `EventRecord` schema, connects findings to MITRE ATT&CK context, and generates evidence records while explicitly tracking evidence gaps.
 
-## Architecture Overview
+Unlike a log aggregator or SIEM, evidence gaps are first-class findings rather than ignored failures. Intelligence is graph-connected instead of only tabular, and the dashboard shows both what the system knows and what it cannot confirm.
 
-![System Layers](docs/assets/screenshots/01-system-layers.png)
+The platform is built for SOC analyst triage support, detection engineering learning, and demonstrating repeatable multi-source normalization patterns.
 
-Huginn and Muninn are modeled after Odin's ravens. Huginn represents thought and reasoning. Muninn represents memory and historical context. Together they provide structured defensive intelligence built on top of a knowledge graph.
+## Architecture
 
-The current architecture connects event analysis, attack-chain reasoning, defensive learning, evidence generation, graph intelligence, API access, and dashboard visibility.
-
-```mermaid
-flowchart TD
-    A[Security Events] --> B[Attack Chain Reasoning]
-    B --> C[Strategic Memory]
-    C --> D[Defensive Learning]
-    D --> E[Architecture Analysis]
-    E --> F[Defense Design]
-    F --> G[Knowledge Graph]
-    G --> H[Graph Intelligence]
-    H --> I[FastAPI Layer]
-    I --> J[Dashboard]
-```
-
-## Dashboard
-
-![Dashboard](docs/assets/screenshots/02-huginn-dashboard.png)
-
-The dashboard acts as the command center for the platform. It provides:
-
-- Conversation interface
-- Event processing
-- Security analysis
-- Graph intelligence visibility
-- System state monitoring
-
-## Graph Intelligence
-
-![Graph Intelligence](docs/assets/screenshots/03-graph-intelligence-panel.png)
-
-The Graph Intelligence layer transforms isolated security events into connected context. It identifies:
-
-- Related entities
-- Similar incidents
-- Defensive recommendations
-- Architectural weaknesses
-- Attack chain relationships
-
-This gives Huginn a structured way to ask questions such as what a security event is connected to, which weaknesses are related to a technique, and what recommendations are supported by known context.
-
-## Graph Intelligence API
-
-![API Summary](docs/assets/screenshots/02-api-graph-summary\(2\).png)
-
-The FastAPI layer exposes graph intelligence data for dashboards, automation workflows, and future AI reasoning components.
-
-Current graph statistics:
-
-- 43 Nodes
-- 42 Relationships
-- MITRE ATT&CK mappings
-- Attack chain relationships
-- Memory links
-- Defensive recommendations
-
-Current read-only API endpoints:
+Security telemetry moves through a shared normalization, graph, evidence, API, and presentation path.
 
 ```text
-GET /graph/summary
-GET /graph/related/{entity_id}
-GET /graph/weaknesses/{entity_id}
-GET /graph/recommendations/{technique_id}
-GET /graph/similar-incidents/{event_id}
+Security Events (Wazuh · GuardDuty)
+        ↓
+    Parser Layer
+  (EventRecord schema)
+        ↓
+   Knowledge Graph
+  (MITRE · entities · relationships)
+        ↓
+   Evidence Layer
+  (confidence scoring · gap detection)
+        ↓
+    FastAPI Layer
+  (ingestion · intelligence · telemetry APIs)
+        ↓
+  Next.js Dashboard
+  (interactive intelligence panels)
 ```
 
-## Core Capabilities
+Adding a new telemetry source requires a parser and an adapter. The graph, evidence layer, and dashboard require no changes.
 
-Huginn // Muninn currently supports several defensive intelligence capabilities:
+## Features
 
-- Event-driven security analysis for structured SOC context
-- Attack-chain reconstruction using MITRE ATT&CK techniques
-- Memory-driven learning from reports, outcomes, and recurring patterns
-- Knowledge graph modeling for events, techniques, weaknesses, recommendations, and memory entries
-- Graph intelligence queries for related entities, connected weaknesses, similar incidents, and recommendations
-- Evidence data modeling and evidence builder output for explainable findings
-- Architecture-level defense analysis and recommendation generation
-- Dashboard and API visibility for the current intelligence layer
+**Multi-Source Ingestion**
 
-## Current Features
+`POST /ingest/wazuh` accepts Wazuh alert payloads, while `POST /ingest/guardduty` accepts AWS GuardDuty findings. Both paths normalize source-specific data into `EventRecord`, the contract shared by downstream graph and evidence processing.
 
-| Feature | Status |
-|----------|----------|
-| Knowledge Graph | ✅ |
-| Graph Intelligence | ✅ |
-| FastAPI API | ✅ |
-| Dashboard | ✅ |
-| Evidence Layer Phase 1 | ✅ |
-| Evidence Builder Phase 2 | ✅ |
-| Huginn Thought Engine | ✅ |
-| Muninn Memory Engine | ✅ |
-| Voice Layer | 🚧 |
-| SOC Integration | 🚧 |
+**Graph-Connected Intelligence**
 
-## Current Platform Status
+The knowledge graph connects events, MITRE ATT&CK techniques, attack chains, architecture weaknesses, memory entries, and defensive recommendations. Graph intelligence queries expose related entities and supporting relationships instead of treating each detection as an isolated row.
 
-| Area | Current State |
+**Evidence Layer with Gap Detection**
+
+The evidence layer creates traceable records, assigns confidence scores, and records missing MITRE mappings or supporting context as evidence gaps. Gap detection tells an analyst where a conclusion needs additional telemetry or validation before action is taken.
+
+**Live Telemetry Dashboard**
+
+The Next.js dashboard presents recent telemetry, severity and rule summaries, evidence status, and an interactive intelligence panel. Analysts can select events to inspect MITRE context and linked evidence, while a 30-second refresh cycle keeps the display aligned with the latest accepted report.
+
+## API Reference
+
+| Endpoint | Description |
 | --- | --- |
-| Huginn | Online |
-| Muninn | Online |
-| Knowledge Graph | Active |
-| Graph Intelligence | Active |
-| Evidence Layer | Phase 1 and Phase 2 complete |
-| API | Operational |
-| Dashboard | Operational |
-| Graph Size | 43 nodes, 42 relationships |
-| Focused Validation | 26 tests passing |
+| `POST /ingest/wazuh` | Accept Wazuh alert payload |
+| `POST /ingest/guardduty` | Accept GuardDuty finding payload |
+| `GET /dashboard/summary` | Telemetry summary |
+| `GET /dashboard/events` | Recent security events |
+| `GET /dashboard/evidence` | Evidence summary |
+| `GET /dashboard/last-updated` | Cache and reload status |
+| `GET /graph/summary` | Knowledge graph summary |
+| `GET /graph/related/{entity_id}` | Related graph entities |
+| `GET /evidence/mitre/{technique_id}` | Evidence for MITRE technique |
+| `GET /evidence/summary` | Full evidence index |
 
-## Validation
+## Quick Start
 
-Current validation status:
-
-- Graph/API/Evidence tests passing
-- 26 tests passing
-- API operational
-- Dashboard operational
-- Graph intelligence operational
-
-Focused test command:
-
-```bash
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 apps/api/.venv/bin/python -m pytest apps/api/tests/test_knowledge_graph.py apps/api/tests/test_graph_intelligence.py apps/api/tests/test_graph_api.py apps/api/tests/test_evidence_schema.py apps/api/tests/test_evidence_builder.py -q
-```
-
-## Project Vision
-
-Huginn // Muninn is not intended to replace analysts. The goal is to augment analyst decision making by:
-
-- Connecting fragmented information
-- Preserving institutional memory
-- Explaining defensive recommendations
-- Providing evidence-backed reasoning
-- Accelerating threat investigation workflows
-
-The long-term direction is an AI-assisted defensive operations platform where security events, prior incidents, architecture weaknesses, and analyst knowledge are connected into a persistent reasoning system.
-
-## Roadmap
-
-### Phase 1
-
-- Knowledge Graph
-- Graph Intelligence
-- Dashboard
-
-### Phase 2
-
-- Evidence Layer
-- Evidence Builder
-
-### Phase 3
-
-- Evidence Query Engine
-- Evidence API
-- Evidence Dashboard
-
-### Phase 4
-
-- Voice Layer
-- Hey Huginn
-
-### Phase 5
-
-- Wazuh Integration
-- Suricata Integration
-- Real SOC Event Ingestion
-
-### Phase 6
-
-- Autonomous Investigation Assistant
-
-## Why This Project Exists
-
-Security teams often have enough data but not enough connected context. Alerts, incidents, architecture notes, recommendations, and historical lessons are frequently stored in separate places. That makes it harder to understand what happened, why it matters, what has been seen before, and which defensive action should come next.
-
-Huginn // Muninn addresses that gap by modeling defensive knowledge as connected intelligence instead of isolated records.
-
-## Skills Demonstrated
-
-This project demonstrates practical cybersecurity engineering and platform design skills:
-
-- SOC detection engineering concepts
-- MITRE ATT&CK-aligned analysis
-- Attack-chain reasoning
-- Defensive architecture analysis
-- Knowledge graph design
-- Evidence and confidence modeling
-- FastAPI service design
-- Dashboard integration
-- Testable Python module development
-- Security-focused documentation and roadmap planning
-
-## Development
-
-Start the API:
+### Backend
 
 ```bash
 cd apps/api
-PYTHONPATH=src .venv/bin/uvicorn huginn_muninn_api.main:app --reload --host 127.0.0.1 --port 8000
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+PYTHONPATH=src uvicorn huginn_muninn_api.main:app --reload
+curl http://localhost:8000/health
 ```
 
-Start the dashboard:
+### Dashboard
 
 ```bash
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 cd apps/web
+npm install
 npm run dev
 ```
 
-Open:
+Open `http://localhost:3000`.
 
-```text
-http://127.0.0.1:3000
+### Ingest a test alert
+
+```bash
+curl -X POST http://localhost:8000/ingest/wazuh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "_source": {
+      "rule": {
+        "id": "550",
+        "description": "Integrity checksum changed."
+      },
+      "timestamp": "2026-06-17T00:00:00Z",
+      "agent": {
+        "name": "synthetic-host"
+      },
+      "data": {
+        "win": {
+          "system": {
+            "severityValue": "3"
+          }
+        }
+      }
+    }
+  }'
 ```
+
+The dashboard will reflect the ingestion within 30 seconds.
+
+## Testing
+
+Tests favor direct unit calls over `TestClient` to keep asynchronous startup and lifespan behavior isolated. The stable test configuration disables the `anyio` plugin and requires `PYTHONPATH=src` so API modules resolve consistently.
+
+```bash
+PYTHONPATH=src python -m pytest tests/ -p no:anyio \
+  --ignore=tests/test_graph_intelligence.py -v
+```
+
+78+ tests across ingestion, evidence, graph intelligence, telemetry refresh, and orchestration.
+
+## Project Status
+
+- [x] Knowledge Graph with MITRE ATT&CK mapping
+- [x] Evidence Layer with confidence scoring and gap detection
+- [x] Wazuh telemetry normalization pipeline
+- [x] AWS GuardDuty normalization parser
+- [x] POST /ingest/wazuh ingestion endpoint
+- [x] POST /ingest/guardduty ingestion endpoint
+- [x] Near-live telemetry refresh (30-second polling)
+- [x] Interactive intelligence dashboard
+- [x] 5-minute hiring manager demo script
+
+See [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) for the full demo walkthrough.
+
+## Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| Backend | Python 3.11, FastAPI, asyncio |
+| Parsing | Custom `EventRecord` normalization layer |
+| Graph | In-memory knowledge graph with relationship traversal |
+| Evidence | Custom confidence scoring engine |
+| Frontend | Next.js 15, TypeScript, Tailwind CSS |
+| Testing | pytest, direct unit testing pattern |
+| Telemetry | Wazuh (endpoint), AWS GuardDuty (cloud) |
+| MITRE | ATT&CK technique mapping, static and graph-connected |
+
+## Notes
+
+- Raw Wazuh alert files are not committed to this repository.
+- All test fixtures use synthetic data only.
+- This repository is intended for cybersecurity portfolio and learning purposes.
+
+## License
+
+[MIT](LICENSE)
