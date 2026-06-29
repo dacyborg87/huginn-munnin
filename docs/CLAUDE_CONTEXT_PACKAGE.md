@@ -377,6 +377,16 @@ Completed:
 - Orchestrator graph context enrichment
 - tests for MITRE detection and chat enrichment events
 
+### Milestone 6C: Test Suite Stabilization
+
+Completed:
+
+- full backend test suite runs without ignored files
+- 127 tests pass with the stable command
+- prior graph state isolation inconsistency no longer reproduces
+- stale `.venv` path corruption identified as the cause of historical
+  inconsistent behavior
+
 ## Current Metrics
 
 Knowledge Graph:
@@ -430,10 +440,10 @@ evidence_gaps_created: 1
 
 ## Current Test Counts
 
-Latest stable focused backend result:
+Latest stable full backend result:
 
 ```text
-78 tests passing
+127 tests passing
 ```
 
 Validated areas:
@@ -454,17 +464,16 @@ Validated areas:
 - Live telemetry API
 - Intelligence context builder
 
-Known excluded API endpoint tests:
+Stable command:
 
-```text
-tests/test_api.py
-tests/test_graph_api.py
-tests/test_evidence_api.py
+```bash
+cd apps/api
+PYTHONPATH=src python -m pytest tests/ -p no:anyio -v
 ```
 
-These are excluded from the stable command because they import
-`fastapi.testclient.TestClient`, which can hang during local collection in this
-environment.
+No `--ignore` exclusions are required. The prior graph state isolation issue
+is resolved. Historical inconsistent behavior came from stale `.venv` path
+corruption rather than production graph logic.
 
 ## Key API Endpoints
 
@@ -716,6 +725,7 @@ Completed:
 - 5A: Near-Live Telemetry Refresh
 - 5B: Interactive Intelligence Dashboard
 - 5C: Wazuh Ingestion API
+- 6C: Full Test Suite Stabilization
 
 Recommended next phases:
 

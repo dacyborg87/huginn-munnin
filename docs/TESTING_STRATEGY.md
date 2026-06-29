@@ -13,13 +13,14 @@ Huginn/Muninn has several layers that can be tested independently:
 - FastAPI endpoint wrappers
 - Web dashboard rendering and build checks
 
-The most stable tests are the focused Python tests that avoid importing the
-full FastAPI application unless endpoint behavior is specifically being tested.
+The full backend suite is stable and currently completes with 127 passing
+tests. Focused tests remain useful while developing a specific module, but no
+test-file exclusions are required for the complete run.
 
-## Known Pytest Issues
+## Historical Pytest Issues
 
-Some local pytest runs have hung during collection or import before any project
-test code executes.
+Earlier local pytest runs sometimes hung during collection or produced
+inconsistent graph results before project test code executed.
 
 Observed causes:
 
@@ -29,9 +30,12 @@ Observed causes:
   collection.
 - Running tests from a directory where repository-root report paths are not
   resolved correctly.
+- A stale `.venv` containing corrupted paths from an earlier environment.
 
-When pytest hangs before test output appears, treat it as a collection/import
-problem first, not automatically as a Huginn/Muninn logic failure.
+The inconsistent behavior was traced to stale virtual-environment path
+corruption. Recreating or correcting the environment resolved the issue. The
+full suite now passes without ignored test files, and the prior graph state
+isolation issue no longer reproduces.
 
 ## Why AnyIO Is Disabled
 
@@ -171,38 +175,21 @@ current change.
 
 ## Single Command Stable Test Run
 
-Use this command for the current known-good backend test run that avoids local
-FastAPI/TestClient collection hangs:
+Activate the API virtual environment, then use this command for the complete
+known-good backend test run:
 
 ```bash
 cd apps/api
-PYTHONPATH=src .venv/bin/python -m pytest tests/ \
-  -p no:anyio \
-  --ignore=tests/test_api.py \
-  --ignore=tests/test_graph_api.py \
-  --ignore=tests/test_evidence_api.py \
-  -q
+PYTHONPATH=src python -m pytest tests/ -p no:anyio -v
 ```
 
 Current result:
 
 ```text
-78 passed
+127 passed
 ```
 
-Excluded files:
-
-- `tests/test_api.py`
-- `tests/test_graph_api.py`
-- `tests/test_evidence_api.py`
-
-Why these are excluded:
-
-These files import `fastapi.testclient.TestClient`. In this local environment,
-that import path can pull in FastAPI, Starlette, HTTPX, IDNA, AnyIO, and
-Pydantic during collection and may hang before project test code runs.
-
-The stable command still covers:
+No `--ignore` exclusions are required. The stable command covers:
 
 - Knowledge Graph
 - Graph Intelligence
@@ -217,6 +204,12 @@ The stable command still covers:
 - Intelligence context builder
 
 ## Graph Test Fixture Rules
+
+The earlier graph state isolation inconsistency is resolved and does not
+reproduce in the full suite. Its apparent behavior came from the corrupted
+paths in a stale `.venv`, not from shared production graph state. Explicit
+repository roots remain the preferred fixture pattern because they make test
+inputs deterministic.
 
 Graph tests should:
 
@@ -263,8 +256,8 @@ await live_telemetry_api.stop_polling()
 
 ## API Test Caveats
 
-API endpoint tests that import `fastapi.testclient.TestClient` may still be
-sensitive to local dependency/import behavior.
+API endpoint tests that import `fastapi.testclient.TestClient` now run as part
+of the complete 127-test suite without exclusions.
 
 Known files that import FastAPI/TestClient:
 
@@ -272,18 +265,19 @@ Known files that import FastAPI/TestClient:
 - `apps/api/tests/test_graph_api.py`
 - `apps/api/tests/test_evidence_api.py`
 
-If these hang during collection:
+If collection problems return after an environment change:
 
-1. Confirm whether the hang occurs before project code executes.
-2. Run focused core tests that avoid `TestClient`.
-3. Use direct import checks:
+1. Confirm the active interpreter belongs to `apps/api/.venv`.
+2. Check the virtual environment for stale absolute paths.
+3. Recreate the virtual environment if its paths reference an old location.
+4. Use direct import checks:
 
 ```bash
 cd apps/api
 PYTHONPATH=src .venv/bin/python -c "from huginn_muninn_api.core.live_telemetry_api import LiveTelemetryApi; print('live telemetry import ok')"
 ```
 
-4. Do not assume a core logic regression until the import path is ruled out.
+5. Do not assume a core logic regression until the environment is ruled out.
 
 ## Web Build Caveats With Node 22
 
