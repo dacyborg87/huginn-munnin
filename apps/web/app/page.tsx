@@ -240,6 +240,7 @@ export default function Home() {
     status: "loading",
   });
   const [selectedEvent, setSelectedEvent] = useState<SelectedEvent | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<string | null>(null);
 
   const latestDecision = events
     .slice()
@@ -269,6 +270,7 @@ export default function Home() {
   async function refreshEvents() {
     const result = await fetch(`${apiUrl}/events?limit=50`);
     setEvents(await result.json());
+    setLastRefreshed(new Date().toISOString());
   }
 
   const refreshGraphIntelligence = useCallback(async () => {
@@ -353,6 +355,7 @@ export default function Home() {
         response.json(),
       );
       setTelemetryPanel({ summary, status: "ready" });
+      setLastRefreshed(new Date().toISOString());
     } catch {
       setTelemetryPanel((current) => ({ ...current, status: "error" }));
     }
@@ -361,6 +364,32 @@ export default function Home() {
   useEffect(() => {
     void refreshTelemetry();
   }, [refreshTelemetry]);
+
+  useEffect(() => {
+    const id = window.setInterval(async () => {
+      try {
+        const result = await fetch(`${apiUrl}/events?limit=50`);
+        setEvents(await result.json());
+        setLastRefreshed(new Date().toISOString());
+      } catch {
+        // silent — stale event data remains visible
+      }
+    }, 10_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(async () => {
+      try {
+        const summary = await fetch(`${apiUrl}/dashboard/summary`).then((r) => r.json());
+        setTelemetryPanel({ summary, status: "ready" });
+        setLastRefreshed(new Date().toISOString());
+      } catch {
+        // silent — stale telemetry data remains visible
+      }
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   async function sendChat() {
     setIsLoading(true);
@@ -396,9 +425,22 @@ export default function Home() {
             <h1 className="text-xl font-semibold tracking-normal">HUGINN // MUNINN</h1>
             <p className="text-sm text-neutral-600">AI command center</p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-command-signal">
-            <Radar size={18} />
-            Operational
+          <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-2 rounded-md border border-command-line bg-command-panel px-3 py-1.5 text-xs">
+              <span className="font-medium text-command-signal">● LIVE</span>
+              <span className="text-neutral-400">events 10s · telemetry 30s</span>
+              {lastRefreshed ? (
+                <span className="text-neutral-500">
+                  last sync {new Date(lastRefreshed).toLocaleTimeString()}
+                </span>
+              ) : (
+                <span className="text-neutral-400">syncing…</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-command-signal">
+              <Radar size={18} />
+              Operational
+            </div>
           </div>
         </div>
       </section>
