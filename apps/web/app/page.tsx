@@ -241,6 +241,29 @@ export default function Home() {
   });
   const [selectedEvent, setSelectedEvent] = useState<SelectedEvent | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<string | null>(null);
+  const [graphTechniqueId, setGraphTechniqueId] = useState<string>(sampleTechniqueId);
+
+  useEffect(() => {
+    if (!selectedEvent) {
+      setGraphTechniqueId(sampleTechniqueId);
+      return;
+    }
+    const ruleId =
+      typeof selectedEvent === "string" ? selectedEvent : (selectedEvent.rule_id ?? "");
+    if (!ruleId) return;
+    void fetchJson<GraphQueryResponse>(
+      `${apiUrl}/graph/related/${encodeURIComponent(ruleId)}`,
+    ).then((result) => {
+      const techniques = extractTechniques(result.connected_entities ?? []);
+      if (techniques.length > 0 && techniques[0]) {
+        setGraphTechniqueId(techniques[0].id);
+      } else {
+        setGraphTechniqueId(sampleTechniqueId);
+      }
+    }).catch(() => {
+      setGraphTechniqueId(sampleTechniqueId);
+    });
+  }, [selectedEvent]);
 
   const latestDecision = events
     .slice()
@@ -279,13 +302,13 @@ export default function Home() {
       const [summary, related, weaknesses, recommendations, similarIncidents] =
         await Promise.all([
           fetch(`${apiUrl}/graph/summary`).then((response) => response.json()),
-          fetch(`${apiUrl}/graph/related/mitre:${sampleTechniqueId}`).then((response) =>
+          fetch(`${apiUrl}/graph/related/mitre:${graphTechniqueId}`).then((response) =>
             response.json(),
           ),
-          fetch(`${apiUrl}/graph/weaknesses/${sampleTechniqueId}`).then((response) =>
+          fetch(`${apiUrl}/graph/weaknesses/${graphTechniqueId}`).then((response) =>
             response.json(),
           ),
-          fetch(`${apiUrl}/graph/recommendations/${sampleTechniqueId}`).then((response) =>
+          fetch(`${apiUrl}/graph/recommendations/${graphTechniqueId}`).then((response) =>
             response.json(),
           ),
           fetch(`${apiUrl}/graph/similar-incidents/${sampleEventId}`).then((response) =>
@@ -303,7 +326,7 @@ export default function Home() {
     } catch {
       setGraphPanel((current) => ({ ...current, status: "error" }));
     }
-  }, []);
+  }, [graphTechniqueId]);
 
   useEffect(() => {
     void refreshGraphIntelligence();
@@ -688,7 +711,7 @@ export default function Home() {
                   }
                 />
                 <GraphEntityList
-                  title={`Related to ${sampleTechniqueId}`}
+                  title={`Related to ${graphTechniqueId}`}
                   entities={graphPanel.related?.connected_entities ?? []}
                 />
                 <GraphEntityList
