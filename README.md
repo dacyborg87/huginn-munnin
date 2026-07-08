@@ -4,6 +4,8 @@ Defensive intelligence connecting security telemetry, evidence, context, and ana
 
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) ![Next.js 15](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
+![Huginn/Muninn dashboard showing live telemetry, evidence panel, and graph intelligence](docs/assets/screenshots/02-huginn-dashboard.png)
+
 Huginn/Muninn ingests security telemetry from multiple sources, normalizes detections into a common `EventRecord` schema, connects findings to MITRE ATT&CK context, and generates evidence records while explicitly tracking evidence gaps.
 
 Unlike a log aggregator or SIEM, evidence gaps are first-class findings rather than ignored failures. Intelligence is graph-connected instead of only tabular, and the dashboard shows both what the system knows and what it cannot confirm.
@@ -68,22 +70,50 @@ The Next.js dashboard presents recent telemetry, severity and rule summaries, ev
 | `GET /evidence/mitre/{technique_id}` | Evidence for MITRE technique |
 | `GET /evidence/summary` | Full evidence index |
 
+## One-Command Demo
+
+The fastest way to see the platform running. Works on Mac and Linux.
+
+```bash
+chmod +x demo.sh
+./demo.sh
+```
+
+The script will:
+1. Check that Python 3.11 and Node.js 22 are installed
+2. Install Python and Node dependencies if needed
+3. Start the FastAPI backend on `http://127.0.0.1:8000`
+4. Start the Next.js dashboard on `http://localhost:3000`
+5. Wait until the API is healthy
+6. Inject a synthetic Wazuh alert (rule `DEMO-60122`, techniques T1110 + T1078)
+7. Print exactly what to click next
+
+Press **Ctrl+C** to stop both servers when you are done.
+
+> API logs: `cat /tmp/huginn-api.log` · Dashboard logs: `cat /tmp/huginn-web.log`
+
 ## Quick Start
+
+**Requirements:** Python 3.11 or higher · Node.js 22
 
 ### Backend
 
 ```bash
 cd apps/api
-python -m venv .venv && source .venv/bin/activate
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-PYTHONPATH=src uvicorn huginn_muninn_api.main:app --reload
+PYTHONPATH=src uvicorn huginn_muninn_api.main:app --reload --host 127.0.0.1
 curl http://localhost:8000/health
 ```
 
 ### Dashboard
 
+> **Mac (Homebrew) only:** if Node 22 is not your default, run this first:
+> `export PATH="/opt/homebrew/opt/node@22/bin:$PATH"`
+>
+> On Linux or Windows, install Node 22 from [nodejs.org](https://nodejs.org) and skip this step.
+
 ```bash
-export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 cd apps/web
 npm install
 npm run dev
@@ -124,11 +154,12 @@ The dashboard will reflect the ingestion within 30 seconds.
 Tests favor direct unit calls over `TestClient` to keep asynchronous startup and lifespan behavior isolated. The stable test configuration disables the `anyio` plugin and requires `PYTHONPATH=src` so API modules resolve consistently.
 
 ```bash
-PYTHONPATH=src python -m pytest tests/ -p no:anyio \
+cd apps/api
+PYTHONPATH=src .venv/bin/python -m pytest tests/ -p no:anyio \
   --ignore=tests/test_graph_intelligence.py -v
 ```
 
-78+ tests across ingestion, evidence, graph intelligence, telemetry refresh, and orchestration.
+120+ tests across ingestion, evidence, graph intelligence, telemetry refresh, and orchestration.
 
 ## Project Status
 
