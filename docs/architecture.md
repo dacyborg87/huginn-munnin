@@ -1,5 +1,7 @@
 # Architecture
 
+> **Note:** This document describes the long-term intended architecture and roadmap. For current implemented capabilities, see the [README](../README.md).
+
 ## Core Orchestrator
 
 The orchestrator routes user intent through an adaptive intelligence graph:

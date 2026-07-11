@@ -43,7 +43,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="HUGINN // MUNINN API",
-    description="Thought and memory engine backend for a modular AI command center.",
+    description="Defensive intelligence dashboard backend — security telemetry ingestion, graph intelligence, and evidence analysis.",
     version="0.1.0",
     lifespan=lifespan,
 )

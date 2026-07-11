@@ -446,7 +446,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <div>
             <h1 className="text-xl font-semibold tracking-normal">HUGINN // MUNINN</h1>
-            <p className="text-sm text-neutral-600">AI command center</p>
+            <p className="text-sm text-neutral-600">Defensive intelligence dashboard</p>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <div className="flex items-center gap-2 rounded-md border border-command-line bg-command-panel px-3 py-1.5 text-xs">
