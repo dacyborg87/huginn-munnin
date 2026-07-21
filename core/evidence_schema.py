@@ -235,6 +235,19 @@ def load_evidence_index(path: Path | str) -> list[EvidenceRecord]:
     ]
 
 
+def merge_evidence_records(
+    existing_records: list[EvidenceRecord],
+    new_records: list[EvidenceRecord],
+) -> list[EvidenceRecord]:
+    records_by_id = {record.evidence_id: record for record in existing_records}
+    for record in new_records:
+        records_by_id[record.evidence_id] = record
+    return [
+        records_by_id[evidence_id]
+        for evidence_id in sorted(records_by_id)
+    ]
+
+
 def save_evidence_index(path: Path | str, records: list[EvidenceRecord]) -> None:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
