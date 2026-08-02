@@ -25,7 +25,6 @@ class GuardDutyIngestApi:
         parser = modules["AwsGuardDutyParser"]()
         ingest_event_records = modules["ingest_event_records"]
         build_real_data_evidence = modules["build_real_data_evidence"]
-        graph = self._load_persistent_graph(modules)
 
         valid_findings = []
         records_skipped = 0
@@ -41,10 +40,12 @@ class GuardDutyIngestApi:
         events = parser.parse_findings(valid_findings)
         records_skipped += len(valid_findings) - len(events)
 
-        _, graph_summary = ingest_event_records(events, graph)
-        evidence_records = build_real_data_evidence(events, graph, persist=False)
-        self._persist_graph(graph, modules)
-        self._merge_evidence_index(evidence_records, modules)
+        graph_summary, evidence_records = self._persist_events(
+            events,
+            modules,
+            ingest_event_records,
+            build_real_data_evidence,
+        )
         evidence_gaps = [
             record
             for record in evidence_records
@@ -139,6 +140,28 @@ class GuardDutyIngestApi:
             encoding="utf-8",
         )
 
+    def _persist_events(
+        self,
+        events: list[Any],
+        modules: dict[str, Any],
+        ingest_event_records: Any,
+        build_real_data_evidence: Any,
+    ) -> tuple[dict[str, int], list[Any]]:
+        if "FileLock" not in modules:
+            graph = self._load_persistent_graph(modules)
+            _, graph_summary = ingest_event_records(events, graph)
+            evidence_records = build_real_data_evidence(events, graph, persist=False)
+            return graph_summary, evidence_records
+
+        lock_path = self.repository_root / "reports" / ".ingestion-artifacts.lock"
+        with modules["FileLock"](lock_path):
+            graph = self._load_persistent_graph(modules)
+            _, graph_summary = ingest_event_records(events, graph)
+            evidence_records = build_real_data_evidence(events, graph, persist=False)
+            self._persist_graph(graph, modules)
+            self._merge_evidence_index(evidence_records, modules)
+        return graph_summary, evidence_records
+
     def _load_persistent_graph(self, modules: dict[str, Any]) -> Any:
         graph_path = self.repository_root / "reports" / "knowledge-graph.json"
         if "load_graph" in modules and graph_path.exists():
@@ -154,11 +177,7 @@ class GuardDutyIngestApi:
             self.repository_root / "core" / "patterns" / "knowledge-graph-summary.json"
         )
         graph.save(graph_path)
-        summary_path.parent.mkdir(parents=True, exist_ok=True)
-        summary_path.write_text(
-            json.dumps(graph.summary(), indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        modules["atomic_write_json"](summary_path, graph.summary())
 
     def _merge_evidence_index(
         self,
@@ -192,6 +211,7 @@ class GuardDutyIngestApi:
                 "core.ingest.real_data_evidence",
                 "core.ingest.wazuh_parser",
                 "core.knowledge_graph",
+                "core.json_persistence",
                 "core.graph_context_builder",
                 "core.graph_intelligence",
                 "core.evidence_schema",
@@ -209,6 +229,10 @@ class GuardDutyIngestApi:
             guardduty_parser = self._load_module(
                 "core.ingest.aws_guardduty_parser",
                 root_core / "ingest" / "aws_guardduty_parser.py",
+            )
+            json_persistence = self._load_module(
+                "core.json_persistence",
+                root_core / "json_persistence.py",
             )
             knowledge_graph = self._load_module(
                 "core.knowledge_graph",
@@ -233,6 +257,8 @@ class GuardDutyIngestApi:
             return {
                 "AwsGuardDutyParser": guardduty_parser.AwsGuardDutyParser,
                 "KnowledgeGraph": knowledge_graph.KnowledgeGraph,
+                "FileLock": json_persistence.FileLock,
+                "atomic_write_json": json_persistence.atomic_write_json,
                 "load_graph": graph_intelligence.load_graph,
                 "ingest_event_records": graph_ingest.ingest_event_records,
                 "build_real_data_evidence": real_data_evidence.build_real_data_evidence,

@@ -36,7 +36,6 @@ class WazuhIngestApi:
         parse_wazuh_alert = self._parser or modules["parse_wazuh_alert"]
         ingest_event_records = self._graph_ingestor or modules["ingest_event_records"]
         build_real_data_evidence = self._evidence_builder or modules["build_real_data_evidence"]
-        graph = self._load_persistent_graph(modules)
 
         events = []
         records_skipped = 0
@@ -52,10 +51,12 @@ class WazuhIngestApi:
             except (TypeError, ValueError, KeyError):
                 records_skipped += 1
 
-        _, graph_summary = ingest_event_records(events, graph)
-        evidence_records = build_real_data_evidence(events, graph, persist=False)
-        self._persist_graph(graph, modules)
-        self._merge_evidence_index(evidence_records, modules)
+        graph_summary, evidence_records = self._persist_events(
+            events,
+            modules,
+            ingest_event_records,
+            build_real_data_evidence,
+        )
         evidence_gaps = [
             record
             for record in evidence_records
@@ -127,6 +128,28 @@ class WazuhIngestApi:
             encoding="utf-8",
         )
 
+    def _persist_events(
+        self,
+        events: list[Any],
+        modules: dict[str, Any],
+        ingest_event_records: Callable[[list[Any], Any], tuple[Any, dict[str, int]]],
+        build_real_data_evidence: Callable[..., list[Any]],
+    ) -> tuple[dict[str, int], list[Any]]:
+        if not modules:
+            graph = self._load_persistent_graph(modules)
+            _, graph_summary = ingest_event_records(events, graph)
+            evidence_records = build_real_data_evidence(events, graph, persist=False)
+            return graph_summary, evidence_records
+
+        lock_path = self.repository_root / "reports" / ".ingestion-artifacts.lock"
+        with modules["FileLock"](lock_path):
+            graph = self._load_persistent_graph(modules)
+            _, graph_summary = ingest_event_records(events, graph)
+            evidence_records = build_real_data_evidence(events, graph, persist=False)
+            self._persist_graph(graph, modules)
+            self._merge_evidence_index(evidence_records, modules)
+        return graph_summary, evidence_records
+
     def _load_persistent_graph(self, modules: dict[str, Any]) -> Any:
         graph_path = self.repository_root / "reports" / "knowledge-graph.json"
         if modules and graph_path.exists():
@@ -142,11 +165,7 @@ class WazuhIngestApi:
             self.repository_root / "core" / "patterns" / "knowledge-graph-summary.json"
         )
         graph.save(graph_path)
-        summary_path.parent.mkdir(parents=True, exist_ok=True)
-        summary_path.write_text(
-            json.dumps(graph.summary(), indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        modules["atomic_write_json"](summary_path, graph.summary())
 
     def _merge_evidence_index(
         self,
@@ -182,6 +201,7 @@ class WazuhIngestApi:
                 "core.ingest.graph_ingest",
                 "core.ingest.real_data_evidence",
                 "core.knowledge_graph",
+                "core.json_persistence",
                 "core.graph_context_builder",
                 "core.graph_intelligence",
                 "core.evidence_schema",
@@ -199,6 +219,10 @@ class WazuhIngestApi:
             wazuh_parser = self._load_module(
                 "core.ingest.wazuh_parser",
                 root_core / "ingest" / "wazuh_parser.py",
+            )
+            json_persistence = self._load_module(
+                "core.json_persistence",
+                root_core / "json_persistence.py",
             )
             knowledge_graph = self._load_module(
                 "core.knowledge_graph",
@@ -223,6 +247,8 @@ class WazuhIngestApi:
             return {
                 "parse_wazuh_alert": wazuh_parser.parse_wazuh_alert,
                 "KnowledgeGraph": knowledge_graph.KnowledgeGraph,
+                "FileLock": json_persistence.FileLock,
+                "atomic_write_json": json_persistence.atomic_write_json,
                 "load_graph": graph_intelligence.load_graph,
                 "ingest_event_records": graph_ingest.ingest_event_records,
                 "build_real_data_evidence": real_data_evidence.build_real_data_evidence,

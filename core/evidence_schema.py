@@ -8,6 +8,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+from core.json_persistence import atomic_write_json
+
 
 SCHEMA_VERSION = "1.0"
 
@@ -250,11 +252,7 @@ def merge_evidence_records(
 
 def save_evidence_index(path: Path | str, records: list[EvidenceRecord]) -> None:
     output_path = Path(path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(evidence_index_to_dict(records), indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
+    atomic_write_json(output_path, evidence_index_to_dict(records))
 
 
 def _validate_range(name: str, value: float) -> None:

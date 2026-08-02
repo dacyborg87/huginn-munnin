@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from core.json_persistence import atomic_write_json
 from core.knowledge_graph import KnowledgeGraph
 
 
@@ -34,11 +35,7 @@ class GraphContextBuilder:
             self.repository_root / "core" / "patterns" / "knowledge-graph-summary.json"
         )
         graph.save(graph_path)
-        summary_path.parent.mkdir(parents=True, exist_ok=True)
-        summary_path.write_text(
-            json.dumps(graph.summary(), indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        atomic_write_json(summary_path, graph.summary())
 
     def _add_events(self, graph: KnowledgeGraph) -> None:
         for event in self._read_jsonl(self.repository_root / "reports" / "soc-events.jsonl"):
