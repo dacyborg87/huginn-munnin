@@ -17,6 +17,7 @@ from typing import Protocol
 import asyncpg
 
 from core.outcomes import Outcome
+from core.stores.trace import extract_trace_id
 
 
 DEFAULT_PATHS = ("PLANNING", "MEMORY_LOOKUP", "TOOL_USE")
@@ -31,18 +32,28 @@ class OutcomeStore(Protocol):
 
     async def list_outcomes(self, limit: int = 100) -> list[Outcome]: ...
 
+    async def find_by_trace_id(self, trace_id: str) -> list[Outcome]: ...
+
 
 class InMemoryOutcomeStore:
     """Today's exact OutcomeTracker storage behavior, moved behind the protocol."""
 
     def __init__(self) -> None:
         self._outcomes: list[Outcome] = []
+        # record_outcome() always accepted a trace_id but never retained it
+        # anywhere prior to Phase A2 — this is the one place a store needed
+        # a genuine (minimal, symmetric) extension to support trace lookup,
+        # since Outcome itself carries no trace_id field to derive it from
+        # at read time the way memories/events do.
+        self._by_trace: dict[str, list[Outcome]] = {}
         self._weights: dict[str, float] = {path: 0.0 for path in DEFAULT_PATHS}
         self._lock = Lock()
 
     async def record_outcome(self, outcome: Outcome, *, trace_id: str | None = None) -> None:
         with self._lock:
             self._outcomes.append(outcome)
+            if trace_id:
+                self._by_trace.setdefault(str(trace_id), []).append(outcome)
 
     async def get_weights(self) -> dict[str, float]:
         with self._lock:
@@ -55,6 +66,10 @@ class InMemoryOutcomeStore:
     async def list_outcomes(self, limit: int = 100) -> list[Outcome]:
         with self._lock:
             return list(self._outcomes[-limit:])
+
+    async def find_by_trace_id(self, trace_id: str) -> list[Outcome]:
+        with self._lock:
+            return list(self._by_trace.get(str(trace_id), []))
 
 
 class PostgresOutcomeStore:
@@ -113,20 +128,36 @@ class PostgresOutcomeStore:
                 """,
                 limit,
             )
-        return [
-            Outcome(
-                event_id=str(row["event_id"]),
-                initial_state=row["initial_state"],
-                chosen_path=row["chosen_path"],
-                result=row["result"],
-                execution_time=row["execution_time"],
-                error_logs=(
-                    json.loads(row["error_logs"])
-                    if isinstance(row["error_logs"], str)
-                    else list(row["error_logs"])
-                ),
-                user_feedback=row["user_feedback"],
-                performance_score=row["performance_score"],
+        return [_row_to_outcome(row) for row in rows]
+
+    async def find_by_trace_id(self, trace_id: str) -> list[Outcome]:
+        trace_uuid = extract_trace_id(trace_id)
+        if trace_uuid is None:
+            return []
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT event_id, initial_state, chosen_path, result, execution_time,
+                       error_logs, user_feedback, performance_score
+                FROM outcomes WHERE trace_id = $1 ORDER BY created_at ASC
+                """,
+                trace_uuid,
             )
-            for row in rows
-        ]
+        return [_row_to_outcome(row) for row in rows]
+
+
+def _row_to_outcome(row) -> Outcome:
+    return Outcome(
+        event_id=str(row["event_id"]),
+        initial_state=row["initial_state"],
+        chosen_path=row["chosen_path"],
+        result=row["result"],
+        execution_time=row["execution_time"],
+        error_logs=(
+            json.loads(row["error_logs"])
+            if isinstance(row["error_logs"], str)
+            else list(row["error_logs"])
+        ),
+        user_feedback=row["user_feedback"],
+        performance_score=row["performance_score"],
+    )

@@ -18,7 +18,7 @@ from typing import Protocol
 import asyncpg
 
 from core.events import Event, EventType
-from core.stores.trace import trace_id_from_event_payload
+from core.stores.trace import extract_trace_id, trace_id_from_event_payload
 
 
 class SystemLogStore(Protocol):
@@ -27,6 +27,8 @@ class SystemLogStore(Protocol):
     async def list(self, limit: int = 100) -> list[Event]: ...
 
     async def clear(self) -> None: ...
+
+    async def find_by_trace_id(self, trace_id: str) -> list[Event]: ...
 
 
 class InMemorySystemLogStore:
@@ -47,6 +49,19 @@ class InMemorySystemLogStore:
     async def clear(self) -> None:
         with self._lock:
             self._logs.clear()
+
+    async def find_by_trace_id(self, trace_id: str) -> list[Event]:
+        """No separate trace_id storage — derived at read time from each
+        event's payload, exactly mirroring what PostgresSystemLogStore
+        computes at write time."""
+        with self._lock:
+            candidates = list(self._logs)
+        matches = []
+        for event in candidates:
+            derived = trace_id_from_event_payload(event.payload, event.id)
+            if derived is not None and str(derived) == str(trace_id):
+                matches.append(event)
+        return matches
 
 
 class PostgresSystemLogStore:
@@ -84,20 +99,31 @@ class PostgresSystemLogStore:
                 """,
                 limit,
             )
-        return [
-            Event(
-                event_type=EventType(row["event_type"]),
-                payload=(
-                    json.loads(row["payload"])
-                    if isinstance(row["payload"], str)
-                    else dict(row["payload"])
-                ),
-                id=str(row["id"]),
-                created_at=row["created_at"],
-            )
-            for row in rows
-        ]
+        return [_row_to_event(row) for row in rows]
 
     async def clear(self) -> None:
         async with self._pool.acquire() as conn:
             await conn.execute("DELETE FROM system_events")
+
+    async def find_by_trace_id(self, trace_id: str) -> list[Event]:
+        trace_uuid = extract_trace_id(trace_id)
+        if trace_uuid is None:
+            return []
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, event_type, payload, created_at FROM system_events "
+                "WHERE trace_id = $1 ORDER BY created_at ASC",
+                trace_uuid,
+            )
+        return [_row_to_event(row) for row in rows]
+
+
+def _row_to_event(row) -> Event:
+    return Event(
+        event_type=EventType(row["event_type"]),
+        payload=(
+            json.loads(row["payload"]) if isinstance(row["payload"], str) else dict(row["payload"])
+        ),
+        id=str(row["id"]),
+        created_at=row["created_at"],
+    )
