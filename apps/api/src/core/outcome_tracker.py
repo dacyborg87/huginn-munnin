@@ -1,30 +1,13 @@
-from dataclasses import asdict, dataclass, field
 from threading import Lock
 from time import perf_counter
-from typing import Any, Literal
 
-
-OutcomeResult = Literal["success", "failure", "partial"]
-
-
-@dataclass(frozen=True)
-class Outcome:
-    event_id: str
-    initial_state: str
-    chosen_path: str
-    result: OutcomeResult
-    execution_time: float
-    error_logs: list[str] = field(default_factory=list)
-    user_feedback: str | None = None
-    performance_score: float = 0.0
-
-    def to_memory(self) -> dict[str, Any]:
-        return asdict(self)
+from core.outcomes import Outcome, OutcomeResult
+from core.stores.outcome_store import InMemoryOutcomeStore, OutcomeStore
 
 
 class OutcomeTracker:
-    def __init__(self) -> None:
-        self._outcomes: list[Outcome] = []
+    def __init__(self, store: OutcomeStore | None = None) -> None:
+        self._store = store or InMemoryOutcomeStore()
         self._weights: dict[str, float] = {
             "PLANNING": 0.0,
             "MEMORY_LOOKUP": 0.0,
@@ -32,10 +15,26 @@ class OutcomeTracker:
         }
         self._lock = Lock()
 
+    def bind_store(self, store: OutcomeStore) -> None:
+        """Swap the backing store (used at startup to switch memory -> postgres)."""
+        self._store = store
+
     def start_timer(self) -> float:
         return perf_counter()
 
-    def record(
+    async def hydrate(self) -> None:
+        """Load authoritative weights from the store into the in-process cache.
+
+        Postgres → learned_weights → OutcomeTracker cache → Decision Engine.
+        Call once at startup; the cache stays authoritative for the process
+        lifetime after that, kept in sync on every record().
+        """
+        weights = await self._store.get_weights()
+        with self._lock:
+            for path, weight in weights.items():
+                self._weights[path] = self._clamp(weight)
+
+    async def record(
         self,
         *,
         event_id: str,
@@ -45,6 +44,7 @@ class OutcomeTracker:
         started_at: float,
         error_logs: list[str] | None = None,
         user_feedback: str | None = None,
+        trace_id: str | None = None,
     ) -> tuple[Outcome, dict[str, float]]:
         execution_time = round(perf_counter() - started_at, 4)
         performance_score = self._performance_score(result, execution_time)
@@ -59,25 +59,31 @@ class OutcomeTracker:
             performance_score=performance_score,
         )
 
+        await self._store.record_outcome(outcome, trace_id=trace_id)
+
         with self._lock:
-            self._outcomes.append(outcome)
-            self._weights[chosen_path] = self._clamp(
+            new_weight = self._clamp(
                 self._weights.get(chosen_path, 0.0) + self._weight_delta(result)
             )
-            return outcome, dict(self._weights)
+            self._weights[chosen_path] = new_weight
+            weights_snapshot = dict(self._weights)
+
+        await self._store.set_weight(chosen_path, new_weight)
+        return outcome, weights_snapshot
 
     def weights(self) -> dict[str, float]:
         with self._lock:
             return dict(self._weights)
 
     def load_weights(self, weights: dict[str, float]) -> None:
+        """Directly override the in-process cache (used by tests). Does not
+        touch the store — for that, write through record()/hydrate()."""
         with self._lock:
             for path, weight in weights.items():
                 self._weights[path] = self._clamp(weight)
 
-    def outcomes(self) -> list[Outcome]:
-        with self._lock:
-            return list(self._outcomes)
+    async def outcomes(self, limit: int = 100) -> list[Outcome]:
+        return await self._store.list_outcomes(limit)
 
     def _weight_delta(self, result: OutcomeResult) -> float:
         if result == "success":

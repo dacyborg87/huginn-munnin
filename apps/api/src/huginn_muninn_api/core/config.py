@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -18,4 +20,15 @@ class Settings(BaseSettings):
     chroma_port: int = 8001
     security_mode: str = "assistive"
 
+    # Muninn Persistence Foundation. Default stays "memory" so the existing
+    # test suite and local dev never require a running Postgres instance.
+    persistence_backend: Literal["memory", "postgres"] = "memory"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+    @property
+    def postgres_dsn(self) -> str:
+        return (
+            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )

@@ -14,6 +14,7 @@ from huginn_muninn_api.core.graph_intelligence_api import GraphIntelligenceApi
 from huginn_muninn_api.core.guardduty_ingest_api import GuardDutyIngestApi
 from huginn_muninn_api.core.live_telemetry_api import LiveTelemetryApi
 from huginn_muninn_api.core.orchestrator import Orchestrator
+from huginn_muninn_api.core.persistence import build_stores
 from huginn_muninn_api.core.wazuh_ingest_api import WazuhIngestApi
 from huginn_muninn_api.schemas.chat import ChatAcceptedResponse, ChatRequest
 from huginn_muninn_api.schemas.events import EventLogEntry
@@ -30,9 +31,23 @@ live_telemetry_api = LiveTelemetryApi(repository_root)
 wazuh_ingest_api = WazuhIngestApi(repository_root)
 guardduty_ingest_api = GuardDutyIngestApi(repository_root)
 
+_store_pool = None
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    global _store_pool
+
+    # Backend selection happens in exactly one place: settings.persistence_backend
+    # decides in-memory (default) vs Postgres. See huginn_muninn_api.core.persistence.
+    stores = await build_stores(settings)
+    _store_pool = stores.pool
+    event_bus.bind_log_store(stores.system_log_store)
+    orchestrator.muninn.bind_store(stores.memory_store)
+    orchestrator.outcome_tracker.bind_store(stores.outcome_store)
+    orchestrator.reasoning_patterns.bind_store(stores.pattern_store)
+    await orchestrator.hydrate()
+
     await event_bus.start()
     await live_telemetry_api.start_polling()
     try:
@@ -40,6 +55,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     finally:
         await live_telemetry_api.stop_polling()
         await event_bus.stop()
+        if _store_pool is not None:
+            await _store_pool.close()
 
 app = FastAPI(
     title="HUGINN // MUNINN API",
@@ -73,8 +90,8 @@ async def remember(record: MemoryRecord) -> MemoryRecord:
 
 
 @app.post("/memory/search", response_model=list[MemoryRecord])
-def search_memory(request: MemorySearchRequest) -> list[MemoryRecord]:
-    return orchestrator.search_memory(request)
+async def search_memory(request: MemorySearchRequest) -> list[MemoryRecord]:
+    return await orchestrator.search_memory(request)
 
 
 @app.post("/security/analyze", response_model=SecurityAnalysisResponse)

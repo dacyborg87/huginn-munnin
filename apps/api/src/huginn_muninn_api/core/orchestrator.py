@@ -50,8 +50,14 @@ class Orchestrator:
         )
         return ChatAcceptedResponse(status="accepted", event_id=event_id)
 
+    async def hydrate(self) -> None:
+        """Load persisted state into in-process caches. Call once at startup,
+        after binding the real backend (in-memory hydrate is a cheap no-op)."""
+        await self.outcome_tracker.hydrate()
+        await self.reasoning_patterns.hydrate()
+
     async def remember(self, record: MemoryRecord) -> MemoryRecord:
-        stored = self.muninn.write(record)
+        stored = await self.muninn.write(record)
         await self.event_bus.emit(
             EventType.MEMORY_WRITTEN,
             {
@@ -63,8 +69,8 @@ class Orchestrator:
         )
         return stored
 
-    def search_memory(self, request: MemorySearchRequest) -> list[MemoryRecord]:
-        return self.muninn.search(request)
+    async def search_memory(self, request: MemorySearchRequest) -> list[MemoryRecord]:
+        return await self.muninn.search(request)
 
     def analyze_security(self, request: SecurityAnalysisRequest) -> SecurityAnalysisResponse:
         return self.security.analyze(request)
@@ -91,10 +97,13 @@ class Orchestrator:
             message=event.payload["message"],
             namespace=event.payload.get("namespace", "default"),
         )
-        relevant_memory = self.muninn.search(
+        relevant_memory = await self.muninn.search(
             MemorySearchRequest(query=request.message, limit=3, namespace=request.namespace)
         )
-        learned_weights = self._learned_weights_from_memory(request.namespace)
+        # Authoritative source: Postgres learned_weights -> OutcomeTracker's
+        # in-process cache (kept in sync on every record()) -> here. No
+        # longer reconstructed by searching Muninn memory records.
+        learned_weights = self.outcome_tracker.weights()
         baseline_decision = self.decision_engine.evaluate(
             request.message, relevant_memory, learned_weights=learned_weights
         )
@@ -224,15 +233,16 @@ class Orchestrator:
     async def _on_ai_task_executing(self, event: Event) -> None:
         started_at = self.outcome_tracker.start_timer()
         result, error_logs = self._determine_outcome(event.payload)
-        outcome, updated_weights = self.outcome_tracker.record(
+        outcome, updated_weights = await self.outcome_tracker.record(
             event_id=event.id,
             initial_state="THINKING",
             chosen_path=event.payload["selected_state"],
             result=result,
             started_at=started_at,
             error_logs=error_logs,
+            trace_id=event.payload["command_event_id"],
         )
-        stored = self.muninn.write(
+        stored = await self.muninn.write(
             MemoryRecord(
                 namespace=event.payload["namespace"],
                 content=f"Processed command as {event.payload['intent']}: {event.payload['response']}",
@@ -247,21 +257,12 @@ class Orchestrator:
                 },
             )
         )
-        outcome_memory = self.muninn.write(
-            MemoryRecord(
-                namespace=event.payload["namespace"],
-                content=(
-                    "learning_weights outcome "
-                    f"{outcome.chosen_path} {outcome.result} "
-                    f"performance {outcome.performance_score}"
-                ),
-                tags=["learning_weights", "outcome", outcome.chosen_path.lower(), outcome.result],
-                metadata={
-                    "outcome": outcome.to_memory(),
-                    "updated_weights": updated_weights,
-                },
-            )
-        )
+        # Note: no separate "learning_weights outcome" memory record is
+        # written here anymore. learned_weights (Postgres-backed via
+        # OutcomeTracker) is now the sole authoritative source for path
+        # weights — that record used to exist only so a later request could
+        # reconstruct weights by searching memory, which is the fragile
+        # indirection the Muninn Persistence Foundation replaces.
         await self.event_bus.emit(
             EventType.MEMORY_WRITTEN,
             {
@@ -269,17 +270,6 @@ class Orchestrator:
                 "namespace": stored.namespace,
                 "tags": stored.tags,
                 "source": "event_pipeline",
-                "command_event_id": event.payload["command_event_id"],
-                "selected_state": event.payload["selected_state"],
-            },
-        )
-        await self.event_bus.emit(
-            EventType.MEMORY_WRITTEN,
-            {
-                "memory_id": outcome_memory.id,
-                "namespace": outcome_memory.namespace,
-                "tags": outcome_memory.tags,
-                "source": "outcome_tracker",
                 "command_event_id": event.payload["command_event_id"],
                 "selected_state": event.payload["selected_state"],
             },
@@ -308,12 +298,12 @@ class Orchestrator:
             },
         )
         context_signature = ContextSignature(**event.payload["context_signature"])
-        pattern, matched_contexts = self.reasoning_patterns.record_outcome(
+        pattern, matched_contexts = await self.reasoning_patterns.record_outcome(
             signature=context_signature,
             chosen_path=event.payload["selected_state"],
             outcome=outcome,
         )
-        pattern_memory = self.muninn.write(
+        pattern_memory = await self.muninn.write(
             MemoryRecord(
                 namespace=event.payload["namespace"],
                 content=(
@@ -458,23 +448,3 @@ class Orchestrator:
             return "partial", ["Memory lookup branch did not find enough context."]
 
         return "success", []
-
-    def _learned_weights_from_memory(self, namespace: str) -> dict[str, float]:
-        learned_weights = self.outcome_tracker.weights()
-        learning_records = self.muninn.search(
-            MemorySearchRequest(query="learning_weights outcome", namespace=namespace, limit=10)
-        )
-
-        for record in learning_records:
-            weights = record.metadata.get("updated_weights")
-            if isinstance(weights, dict):
-                learned_weights.update(
-                    {
-                        str(path): float(weight)
-                        for path, weight in weights.items()
-                        if isinstance(weight, int | float)
-                    }
-                )
-
-        self.outcome_tracker.load_weights(learned_weights)
-        return learned_weights

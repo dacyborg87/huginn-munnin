@@ -10,12 +10,16 @@ from huginn_muninn_api.main import app, orchestrator
 
 
 @pytest.fixture(autouse=True)
-def isolate_reasoning_patterns(tmp_path):
+def isolate_reasoning_patterns():
+    # Fresh in-memory-backed instances per test. TestClient's lifespan also
+    # rebinds fresh stores on every `with TestClient(app) as client:` entry
+    # (see main.py), so this fixture and the lifespan startup are
+    # complementary, not redundant: this covers direct orchestrator.*
+    # attribute access before a client is opened, lifespan covers the
+    # request path.
     orchestrator.muninn = MuninnMemory()
     orchestrator.outcome_tracker = OutcomeTracker()
-    orchestrator.reasoning_patterns = ReasoningPatternEngine(
-        storage_path=tmp_path / "reasoning_patterns.json"
-    )
+    orchestrator.reasoning_patterns = ReasoningPatternEngine()
 
 
 def event_types(client: TestClient) -> list[str]:
@@ -148,7 +152,7 @@ def test_chat_emits_enriched_intelligence_context() -> None:
         assert intelligence_context["related_entities"]["T1078"]["connected_entities"]
 
 
-def test_memory_context_changes_branch_for_similar_command(tmp_path) -> None:
+def test_memory_context_changes_branch_for_similar_command() -> None:
     namespace = "branching-test"
     message = "Continue project work"
 
@@ -165,9 +169,7 @@ def test_memory_context_changes_branch_for_similar_command(tmp_path) -> None:
             sleep(0.05)
 
         assert first_state == "PLANNING"
-        orchestrator.reasoning_patterns = ReasoningPatternEngine(
-            storage_path=tmp_path / "memory_branch_patterns.json"
-        )
+        orchestrator.reasoning_patterns = ReasoningPatternEngine()
 
         memory_response = client.post(
             "/memory",

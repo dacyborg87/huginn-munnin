@@ -2,59 +2,13 @@ import asyncio
 import inspect
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from enum import StrEnum
-from threading import Lock
 from typing import Any
-from uuid import uuid4
 
-
-class EventType(StrEnum):
-    USER_COMMAND_RECEIVED = "USER_COMMAND_RECEIVED"
-    CONTEXT_SIGNATURE_CREATED = "CONTEXT_SIGNATURE_CREATED"
-    PATTERN_MATCH_LOOKUP = "PATTERN_MATCH_LOOKUP"
-    AI_CONTEXT_ENRICHED = "AI_CONTEXT_ENRICHED"
-    AI_THINKING_STARTED = "AI_THINKING_STARTED"
-    AI_DECISION_MADE = "AI_DECISION_MADE"
-    AI_PLAN_CREATED = "AI_PLAN_CREATED"
-    AI_TASK_EXECUTING = "AI_TASK_EXECUTING"
-    AI_TASK_COMPLETED = "AI_TASK_COMPLETED"
-    AI_OUTCOME_RECORDED = "AI_OUTCOME_RECORDED"
-    AI_PATTERN_RECORDED = "AI_PATTERN_RECORDED"
-    MEMORY_WRITTEN = "MEMORY_WRITTEN"
-    AGENT_STATUS_UPDATED = "AGENT_STATUS_UPDATED"
-
-
-@dataclass(frozen=True)
-class Event:
-    event_type: EventType
-    payload: dict[str, Any]
-    id: str = field(default_factory=lambda: str(uuid4()))
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+from core.events import Event, EventType
+from core.stores.system_log_store import InMemorySystemLogStore, SystemLogStore
 
 
 EventHandler = Callable[[Event], None | Awaitable[None]]
-
-
-class SystemLogStore:
-    """In-memory fallback for the future Postgres system_logs table."""
-
-    def __init__(self) -> None:
-        self._logs: list[Event] = []
-        self._lock = Lock()
-
-    async def write(self, event: Event) -> None:
-        with self._lock:
-            self._logs.append(event)
-
-    async def list(self, limit: int = 100) -> list[Event]:
-        with self._lock:
-            return list(self._logs[-limit:])
-
-    async def clear(self) -> None:
-        with self._lock:
-            self._logs.clear()
 
 
 class EventBus:
@@ -63,7 +17,11 @@ class EventBus:
         self._subscribers: dict[EventType, list[EventHandler]] = defaultdict(list)
         self._worker: asyncio.Task[None] | None = None
         self._running = False
-        self.logs = log_store or SystemLogStore()
+        self.logs = log_store or InMemorySystemLogStore()
+
+    def bind_log_store(self, store: SystemLogStore) -> None:
+        """Swap the backing store (used at startup to switch memory -> postgres)."""
+        self.logs = store
 
     def subscribe(self, event_type: EventType | str, handler: EventHandler) -> None:
         normalized = EventType(event_type)

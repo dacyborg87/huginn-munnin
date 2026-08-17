@@ -60,13 +60,14 @@ The dashboard is a single-page Next.js application with the following panels, al
 
 ## Current Limitations
 
-- The knowledge graph is in-memory and resets when the API restarts. Runtime-ingested alerts are not persisted to disk.
+- The Security Knowledge Graph (Wazuh/GuardDuty/MITRE/evidence — see `core/knowledge_graph.py`) is in-memory and resets when the API restarts. Runtime-ingested alerts are not persisted to disk. This is a separate system from Muninn's reasoning memory below and was not touched by the persistence work described here.
+- Muninn's reasoning memory (chat memory records, outcome history, learned path weights, reasoning patterns, and the full system event log) can now optionally persist to Postgres across restarts — set `persistence_backend=postgres` and run `docker compose up -d postgres`. The default remains in-memory (matching every prior milestone), so this is opt-in, not automatic. See [docs/MUNINN_PERSISTENCE.md](docs/MUNINN_PERSISTENCE.md).
 - Intelligence is rule-based and graph-based. There is no machine learning, no language model, and no external AI API call anywhere in the running code.
 - The Conversation panel accepts text input but responds with template strings, not generated analysis.
 - Wazuh and GuardDuty ingestion accepts JSON payloads directly. There is no live connection to a running Wazuh instance or AWS account.
 - The SOC layer (Wazuh + Suricata) is scaffolded — the detection rules exist, but the full pipeline to a live sensor is not wired.
 - No authentication or access control has been implemented.
-- The database services in `docker-compose.yml` (Postgres, ChromaDB) are not used by the current application — they are placeholders for future persistence work.
+- ChromaDB in `docker-compose.yml` remains unused by the current application — it is a placeholder for future vector-search work, out of scope for this milestone.
 
 ## What I Learned
 
@@ -75,7 +76,7 @@ The dashboard is a single-page Next.js application with the following panels, al
 - How to build a knowledge graph from scratch without a graph database — using in-memory nodes, relationships, and traversal queries backed by JSON
 - How to structure a FastAPI application with a clean separation between ingestion, intelligence, and telemetry layers, each independently testable
 - How to wire a Next.js frontend to a live backend using polling intervals, stable `useCallback` dependencies, and graceful stale-data fallbacks
-- How to write 121 tests that exercise real behavior rather than mocking away the logic being tested
+- How to write 132 tests that exercise real behavior rather than mocking away the logic being tested, including a persistence "restart test" that proves state survives independent process/store creation rather than asserting a row exists in a table
 
 ## Architecture
 
@@ -158,7 +159,7 @@ The dashboard will reflect the ingestion within 30 seconds.
 
 ## Testing
 
-Tests use direct unit calls rather than `TestClient` to keep startup and lifespan behavior isolated. The `anyio` plugin is disabled and `PYTHONPATH=src` is required.
+Most tests use direct unit calls to keep startup and lifespan behavior isolated; `test_api.py` and the persistence integration tests use `TestClient`/a live event loop directly instead. The `anyio` plugin is disabled and `PYTHONPATH=src` is required.
 
 ```bash
 cd apps/api
@@ -166,7 +167,14 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/ -p no:anyio \
   --ignore=tests/test_graph_intelligence.py -v
 ```
 
-121 tests across ingestion, evidence, graph intelligence, telemetry refresh, and orchestration.
+132 tests across ingestion, evidence, graph intelligence, telemetry refresh, orchestration, and Muninn persistence. 125 of those run with zero setup; 7 are Postgres-backed persistence tests that self-skip unless `TEST_DATABASE_URL` is set:
+
+```bash
+docker compose up -d postgres
+TEST_DATABASE_URL=postgresql://muninn:muninn@localhost:5432/muninn \
+  PYTHONPATH=src .venv/bin/python -m pytest tests/ -p no:anyio \
+  --ignore=tests/test_graph_intelligence.py -v
+```
 
 ## Tech Stack
 
@@ -177,7 +185,8 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/ -p no:anyio \
 | Graph | In-memory knowledge graph with relationship traversal |
 | Evidence | Custom confidence scoring and gap detection engine |
 | Frontend | Next.js 15, TypeScript, Tailwind CSS |
-| Testing | pytest, 121 tests, direct unit testing pattern |
+| Testing | pytest, 132 tests, direct unit testing pattern |
+| Persistence | asyncpg (Postgres), opt-in — in-memory by default |
 | Telemetry sources | Wazuh (endpoint), AWS GuardDuty (cloud) |
 | MITRE | ATT&CK technique mapping, graph-connected |
 
@@ -192,7 +201,8 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/ -p no:anyio \
 - [x] Graph intelligence queries (related entities, weaknesses, recommendations)
 - [x] Evidence gap detection as first-class findings
 - [x] One-command demo script
-- [ ] Persistent graph storage (planned)
+- [x] Muninn reasoning-memory persistence (opt-in Postgres backend for memory, outcomes, learned weights, reasoning patterns, event log — see [docs/MUNINN_PERSISTENCE.md](docs/MUNINN_PERSISTENCE.md))
+- [ ] Persistent Security Knowledge Graph storage (planned — separate system from Muninn's memory above)
 - [ ] Live Wazuh API connection (planned)
 - [ ] Voice interface — Hey Huginn (planned)
 
@@ -202,7 +212,7 @@ See [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) for the full demo walkthrough.
 
 - Raw Wazuh alert log files are not committed to this repository.
 - All test fixtures and graph seed data use synthetic data only.
-- `docker-compose.yml` provisions Postgres and ChromaDB for future persistence work. Neither is required to run the demo.
+- `docker-compose.yml` provisions Postgres (now used, opt-in, by Muninn's persistence layer — see [docs/MUNINN_PERSISTENCE.md](docs/MUNINN_PERSISTENCE.md)) and ChromaDB (still unused, placeholder for future vector-search work). Neither is required to run the demo — the default backend is in-memory.
 - This project is a cybersecurity portfolio and learning exercise. It is not production-ready and has no authentication.
 - `docs/architecture.md` describes the long-term intended architecture, not the current implemented state.
 

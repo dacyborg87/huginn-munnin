@@ -1,63 +1,34 @@
-import json
 import re
-from dataclasses import asdict, dataclass, field
-from pathlib import Path
 from threading import Lock
 from typing import Any
 from uuid import uuid4
 
-from core.outcome_tracker import Outcome
+from core.outcomes import Outcome
+from core.reasoning_types import ContextSignature, Pattern, PatternMatch
+from core.stores.pattern_store import InMemoryPatternStore, PatternStore
 from huginn_muninn_api.schemas.memory import MemoryRecord
 
 
-@dataclass
-class ContextSignature:
-    intent: str
-    intent_embedding: list[float]
-    memory_relevance_summary: str
-    memory_relevance_score: float
-    system_state: str
-    tokens: list[str]
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-
-@dataclass
-class Pattern:
-    pattern_id: str
-    context_signature: dict[str, Any]
-    preferred_path_distribution: dict[str, float]
-    success_rate: float
-    conditions: dict[str, Any]
-    matched_contexts: int = 1
-    outcomes: list[dict[str, Any]] = field(default_factory=list)
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-
-@dataclass(frozen=True)
-class PatternMatch:
-    pattern: Pattern
-    similarity: float
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "pattern_id": self.pattern.pattern_id,
-            "similarity": self.similarity,
-            "success_rate": self.pattern.success_rate,
-            "preferred_path_distribution": self.pattern.preferred_path_distribution,
-            "conditions": self.pattern.conditions,
-        }
-
-
 class ReasoningPatternEngine:
-    def __init__(self, storage_path: Path | None = None) -> None:
-        self.storage_path = storage_path or Path("apps/api/data/reasoning_patterns.json")
+    def __init__(self, store: PatternStore | None = None) -> None:
+        self._store = store or InMemoryPatternStore()
         self._patterns: dict[str, Pattern] = {}
         self._lock = Lock()
-        self._load()
+
+    def bind_store(self, store: PatternStore) -> None:
+        """Swap the backing store (used at startup to switch memory -> postgres)."""
+        self._store = store
+
+    async def hydrate(self) -> None:
+        """Load existing patterns from the store into the in-process cache.
+
+        Call once at startup (or in tests, once per fresh engine instance) —
+        matching the old synchronous __init__-time _load(), but async since
+        the Postgres backend cannot be read synchronously.
+        """
+        patterns = await self._store.load()
+        with self._lock:
+            self._patterns = dict(patterns)
 
     def create_context_signature(
         self,
@@ -99,7 +70,7 @@ class ReasoningPatternEngine:
                 influence[path] = influence.get(path, 0.0) + round(strength * share, 3)
         return {path: round(value, 3) for path, value in influence.items()}
 
-    def record_outcome(
+    async def record_outcome(
         self,
         *,
         signature: ContextSignature,
@@ -140,8 +111,10 @@ class ReasoningPatternEngine:
                 }
                 matched_contexts = [pattern.pattern_id]
 
-            self._save()
-            return pattern, matched_contexts
+            patterns_snapshot = dict(self._patterns)
+
+        await self._store.save(patterns_snapshot)
+        return pattern, matched_contexts
 
     def _best_existing_pattern(self, signature: ContextSignature) -> PatternMatch | None:
         matches = [
@@ -213,23 +186,3 @@ class ReasoningPatternEngine:
 
     def _tokens(self, text: str) -> set[str]:
         return set(re.findall(r"[a-z0-9]+", text.lower()))
-
-    def _load(self) -> None:
-        if not self.storage_path.exists():
-            return
-        try:
-            raw_patterns = json.loads(self.storage_path.read_text())
-        except json.JSONDecodeError:
-            return
-
-        self._patterns = {
-            raw["pattern_id"]: Pattern(**raw)
-            for raw in raw_patterns
-            if isinstance(raw, dict) and "pattern_id" in raw
-        }
-
-    def _save(self) -> None:
-        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-        self.storage_path.write_text(
-            json.dumps([pattern.to_dict() for pattern in self._patterns.values()], indent=2)
-        )
