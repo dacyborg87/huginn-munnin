@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from core.json_persistence import atomic_write_json
 
 
 NODE_TYPES = {
@@ -143,11 +144,7 @@ class KnowledgeGraph:
 
     def save(self, path: Path | str) -> None:
         output_path = Path(path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(
-            json.dumps(self.to_dict(), indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        atomic_write_json(output_path, self.to_dict())
 
     def summary(self, top_limit: int = 10) -> dict[str, Any]:
         connection_counts: Counter[str] = Counter()

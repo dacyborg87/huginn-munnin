@@ -25,7 +25,6 @@ class GuardDutyIngestApi:
         parser = modules["AwsGuardDutyParser"]()
         ingest_event_records = modules["ingest_event_records"]
         build_real_data_evidence = modules["build_real_data_evidence"]
-        graph = modules["KnowledgeGraph"]()
 
         valid_findings = []
         records_skipped = 0
@@ -41,8 +40,12 @@ class GuardDutyIngestApi:
         events = parser.parse_findings(valid_findings)
         records_skipped += len(valid_findings) - len(events)
 
-        _, graph_summary = ingest_event_records(events, graph)
-        evidence_records = build_real_data_evidence(events, graph, persist=False)
+        graph_summary, evidence_records = self._persist_events(
+            events,
+            modules,
+            ingest_event_records,
+            build_real_data_evidence,
+        )
         evidence_gaps = [
             record
             for record in evidence_records
@@ -137,6 +140,65 @@ class GuardDutyIngestApi:
             encoding="utf-8",
         )
 
+    def _persist_events(
+        self,
+        events: list[Any],
+        modules: dict[str, Any],
+        ingest_event_records: Any,
+        build_real_data_evidence: Any,
+    ) -> tuple[dict[str, int], list[Any]]:
+        if "FileLock" not in modules:
+            graph = self._load_persistent_graph(modules)
+            _, graph_summary = ingest_event_records(events, graph)
+            evidence_records = build_real_data_evidence(events, graph, persist=False)
+            return graph_summary, evidence_records
+
+        lock_path = self.repository_root / "reports" / ".ingestion-artifacts.lock"
+        with modules["FileLock"](lock_path):
+            graph = self._load_persistent_graph(modules)
+            _, graph_summary = ingest_event_records(events, graph)
+            evidence_records = build_real_data_evidence(events, graph, persist=False)
+            self._persist_graph(graph, modules)
+            self._merge_evidence_index(evidence_records, modules)
+        return graph_summary, evidence_records
+
+    def _load_persistent_graph(self, modules: dict[str, Any]) -> Any:
+        graph_path = self.repository_root / "reports" / "knowledge-graph.json"
+        if "load_graph" in modules and graph_path.exists():
+            return modules["load_graph"](graph_path)
+        return modules["KnowledgeGraph"]()
+
+    def _persist_graph(self, graph: Any, modules: dict[str, Any]) -> None:
+        if "load_graph" not in modules:
+            return
+
+        graph_path = self.repository_root / "reports" / "knowledge-graph.json"
+        summary_path = (
+            self.repository_root / "core" / "patterns" / "knowledge-graph-summary.json"
+        )
+        graph.save(graph_path)
+        modules["atomic_write_json"](summary_path, graph.summary())
+
+    def _merge_evidence_index(
+        self,
+        evidence_records: list[Any],
+        modules: dict[str, Any],
+    ) -> None:
+        if "merge_evidence_records" not in modules:
+            return
+
+        evidence_path = self.repository_root / "reports" / "evidence-index.json"
+        existing_records = (
+            modules["load_evidence_index"](evidence_path)
+            if evidence_path.exists()
+            else []
+        )
+        merged_records = modules["merge_evidence_records"](
+            existing_records,
+            evidence_records,
+        )
+        modules["save_evidence_index"](evidence_path, merged_records)
+
     def _repository_modules(self) -> dict[str, Any]:
         root_core = self.repository_root / "core"
         preserved_modules = {
@@ -149,6 +211,9 @@ class GuardDutyIngestApi:
                 "core.ingest.real_data_evidence",
                 "core.ingest.wazuh_parser",
                 "core.knowledge_graph",
+                "core.json_persistence",
+                "core.graph_context_builder",
+                "core.graph_intelligence",
                 "core.evidence_schema",
             )
         }
@@ -165,9 +230,17 @@ class GuardDutyIngestApi:
                 "core.ingest.aws_guardduty_parser",
                 root_core / "ingest" / "aws_guardduty_parser.py",
             )
+            json_persistence = self._load_module(
+                "core.json_persistence",
+                root_core / "json_persistence.py",
+            )
             knowledge_graph = self._load_module(
                 "core.knowledge_graph",
                 root_core / "knowledge_graph.py",
+            )
+            evidence_schema = self._load_module(
+                "core.evidence_schema",
+                root_core / "evidence_schema.py",
             )
             graph_ingest = self._load_module(
                 "core.ingest.graph_ingest",
@@ -177,11 +250,21 @@ class GuardDutyIngestApi:
                 "core.ingest.real_data_evidence",
                 root_core / "ingest" / "real_data_evidence.py",
             )
+            graph_intelligence = self._load_module(
+                "core.graph_intelligence",
+                root_core / "graph_intelligence.py",
+            )
             return {
                 "AwsGuardDutyParser": guardduty_parser.AwsGuardDutyParser,
                 "KnowledgeGraph": knowledge_graph.KnowledgeGraph,
+                "FileLock": json_persistence.FileLock,
+                "atomic_write_json": json_persistence.atomic_write_json,
+                "load_graph": graph_intelligence.load_graph,
                 "ingest_event_records": graph_ingest.ingest_event_records,
                 "build_real_data_evidence": real_data_evidence.build_real_data_evidence,
+                "load_evidence_index": evidence_schema.load_evidence_index,
+                "merge_evidence_records": evidence_schema.merge_evidence_records,
+                "save_evidence_index": evidence_schema.save_evidence_index,
             }
         finally:
             for name, module in preserved_modules.items():
