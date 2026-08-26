@@ -100,10 +100,20 @@ class Orchestrator:
         relevant_memory = await self.muninn.search(
             MemorySearchRequest(query=request.message, limit=3, namespace=request.namespace)
         )
+        # Phase B2: recomputed here rather than threaded from chat()'s
+        # AI_CONTEXT_ENRICHED emission — that event has no subscriber and
+        # this handler runs from a separate event with no payload path
+        # carrying it. Cheap (JSON read + regex), no new event payload keys.
+        intelligence_context = self.intelligence_context.build(request.message)
         # Authoritative source: Postgres learned_weights -> OutcomeTracker's
         # in-process cache (kept in sync on every record()) -> here. No
         # longer reconstructed by searching Muninn memory records.
         learned_weights = self.outcome_tracker.weights()
+        # intelligence_context deliberately NOT passed to the baseline call:
+        # only .intent/.memory_relevance are consumed from it (to build the
+        # reasoning-pattern context signature before pattern matching), and
+        # domain evidence affects neither — passing it here would be a
+        # redundant computation with zero observable effect.
         baseline_decision = self.decision_engine.evaluate(
             request.message, relevant_memory, learned_weights=learned_weights
         )
@@ -139,6 +149,7 @@ class Orchestrator:
             learned_weights=learned_weights,
             pattern_influence=pattern_influence,
             matched_patterns=pattern_match_payloads,
+            intelligence_context=intelligence_context,
         )
         context: GraphContext = {
             "current_state": "THINKING",
