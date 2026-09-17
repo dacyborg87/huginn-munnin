@@ -31,6 +31,12 @@ def atomic_write_json(path: Path | str, payload: Any) -> None:
             os.fsync(temp_file.fileno())
         os.replace(temp_path, output_path)
         temp_path = None
+        # Persist the rename as well as the file contents before acknowledging it.
+        directory_fd = os.open(output_path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
     except Exception:
         if temp_path is not None:
             try:

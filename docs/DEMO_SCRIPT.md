@@ -222,7 +222,7 @@ evidence, and gaps into a readable analyst workflow.
 
 - Use `PYTHONPATH=src` when starting or testing the API from `apps/api`.
 - Report refresh is 30 seconds, not instant.
-- Graph state is in-memory for runtime ingest and resets on API restart.
+- Runtime graph and evidence persist in `reports/knowledge-graph.json` and `reports/evidence-index.json`. Restarting the API with the same files preserves ingested alerts; replaying an alert ID adds no duplicate event. See the README restart walkthrough. Keep `reports/` and `core/patterns/` writable and on persistent storage; do not regenerate sample artifacts to restart the demo.
 - Do not use real hostnames, IPs, usernames, or raw alert logs in screenshots.
 
 ## 5. What To Say If Something Goes Wrong

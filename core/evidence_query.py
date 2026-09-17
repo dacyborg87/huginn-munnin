@@ -15,8 +15,9 @@ from core.evidence_schema import (
 
 
 DEFAULT_EVIDENCE_PATHS = (
-    Path("reports/evidence-builder-output.json"),
+    # Runtime upserts take precedence over older generated evidence artifacts.
     Path("reports/evidence-index.json"),
+    Path("reports/evidence-builder-output.json"),
 )
 DEFAULT_QUERY_OUTPUT_PATH = Path("reports/evidence-query-output.json")
 

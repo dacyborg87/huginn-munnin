@@ -155,3 +155,23 @@ def test_file_lock_closes_handle_when_flock_raises(
 
     assert opened_handle.closed
     assert lock._handle is None
+
+
+def test_directory_sync_failure_is_reported_after_atomic_replace(tmp_path, monkeypatch):
+    import stat
+
+    output_path = tmp_path / "artifact.json"
+    atomic_write_json(output_path, {"old": True})
+    original_fsync = json_persistence.os.fsync
+
+    def fail_directory_sync(fd):
+        if stat.S_ISDIR(json_persistence.os.fstat(fd).st_mode):
+            raise OSError("directory sync failed")
+        original_fsync(fd)
+
+    monkeypatch.setattr(json_persistence.os, "fsync", fail_directory_sync)
+    with pytest.raises(OSError, match="directory sync failed"):
+        atomic_write_json(output_path, {"new": True})
+    # A failed durability acknowledgement must still leave a complete JSON file.
+    assert json.loads(output_path.read_text()) == {"new": True}
+    assert list(tmp_path.glob(".artifact.json.*.tmp")) == []

@@ -153,7 +153,9 @@ class KnowledgeGraph:
             connection_counts[relationship.target_id] += 1
 
         top_connected = []
-        for node_id, count in connection_counts.most_common(top_limit):
+        # Break ties by ID so reloading sorted JSON cannot reorder the summary.
+        ranked_connections = sorted(connection_counts.items(), key=lambda item: (-item[1], item[0]))
+        for node_id, count in ranked_connections[:max(0, top_limit)]:
             node = self.nodes[node_id]
             top_connected.append(
                 {
