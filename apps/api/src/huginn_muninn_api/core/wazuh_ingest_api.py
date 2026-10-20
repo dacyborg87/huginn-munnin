@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
-from pathlib import Path
 import sys
-from typing import Any, Callable
 import types
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+from huginn_muninn_api.core.repository_module_lock import repository_module_transaction
 
 
 class WazuhIngestApi:
@@ -192,22 +195,7 @@ class WazuhIngestApi:
             return {}
 
         root_core = self.repository_root / "core"
-        preserved_modules = {
-            name: sys.modules.get(name)
-            for name in (
-                "core",
-                "core.ingest",
-                "core.ingest.wazuh_parser",
-                "core.ingest.graph_ingest",
-                "core.ingest.real_data_evidence",
-                "core.knowledge_graph",
-                "core.json_persistence",
-                "core.graph_context_builder",
-                "core.graph_intelligence",
-                "core.evidence_schema",
-            )
-        }
-        try:
+        with repository_module_transaction():
             core_package = types.ModuleType("core")
             core_package.__path__ = [str(root_core)]
             sys.modules["core"] = core_package
@@ -256,12 +244,6 @@ class WazuhIngestApi:
                 "merge_evidence_records": evidence_schema.merge_evidence_records,
                 "save_evidence_index": evidence_schema.save_evidence_index,
             }
-        finally:
-            for name, module in preserved_modules.items():
-                if module is None:
-                    sys.modules.pop(name, None)
-                else:
-                    sys.modules[name] = module
 
     @staticmethod
     def _load_module(name: str, path: Path) -> Any:

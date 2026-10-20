@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from collections import Counter
 import importlib.util
-from pathlib import Path
 import sys
-from typing import Any
 import types
+from collections import Counter
+from pathlib import Path
+from typing import Any
+
+from huginn_muninn_api.core.repository_module_lock import repository_module_transaction
 
 
 class EvidenceApi:
@@ -75,11 +77,7 @@ class EvidenceApi:
 
     def _load_repository_evidence_query(self) -> Any:
         root_core = self.repository_root / "core"
-        preserved_modules = {
-            name: sys.modules.get(name)
-            for name in ("core", "core.evidence_schema", "core.evidence_query")
-        }
-        try:
+        with repository_module_transaction():
             core_package = types.ModuleType("core")
             core_package.__path__ = [str(root_core)]
             sys.modules["core"] = core_package
@@ -89,12 +87,6 @@ class EvidenceApi:
                 root_core / "evidence_query.py",
             )
             return query_module.EvidenceQuery
-        finally:
-            for name, module in preserved_modules.items():
-                if module is None:
-                    sys.modules.pop(name, None)
-                else:
-                    sys.modules[name] = module
 
     @staticmethod
     def _load_module(name: str, path: Path) -> Any:

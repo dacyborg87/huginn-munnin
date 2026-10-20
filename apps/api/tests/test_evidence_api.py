@@ -3,12 +3,11 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-
 API_SRC = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(API_SRC))
 sys.modules.pop("core", None)
 
-from huginn_muninn_api.main import app  # noqa: E402
+from huginn_muninn_api.main import app
 
 
 def test_evidence_summary_endpoint() -> None:
@@ -118,3 +117,49 @@ def test_evidence_empty_result_is_clear() -> None:
     assert body["evidence_records"] == []
     assert "No evidence records matched" in body["explanation"]
     assert "evidence gap" in body["explanation"]
+
+
+def test_parallel_evidence_endpoints(tmp_path, monkeypatch) -> None:
+    import hashlib
+    import shutil
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from huginn_muninn_api import main
+    from huginn_muninn_api.core.evidence_api import EvidenceApi
+
+    root = Path(__file__).resolve().parents[3]
+    shutil.copytree(root / "core", tmp_path / "core", ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(root / "reports", tmp_path / "reports")
+    monkeypatch.setattr(main, "evidence_api", EvidenceApi(tmp_path))
+    paths = [
+        "/evidence/summary",
+        "/evidence/finding/finding:does-not-exist",
+        "/evidence/mitre/T1078",
+        "/evidence/weakness/15953a2c-3b98-4640-9401-1306f95162e3",
+        "/evidence/recommendation/design.post_auth_telemetry_layer",
+        "/evidence/confidence/high",
+    ]
+
+    def hashes():
+        return {
+            str(p): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in tmp_path.rglob("*.json")
+        }
+
+    before = hashes()
+    with TestClient(app) as client:
+        expected = [client.get(path).json() for path in paths]
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            for _ in range(5):
+                barrier = Barrier(6, timeout=5)
+
+                def request(i, barrier=barrier):
+                    barrier.wait()
+                    response = client.get(paths[i])
+                    assert response.status_code == 200
+                    return response.json()
+
+                futures = [pool.submit(request, i) for i in range(6)]
+                assert [f.result(timeout=10) for f in futures] == expected
+    assert hashes() == before
