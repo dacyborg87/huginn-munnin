@@ -1,13 +1,17 @@
+import asyncio
+import logging
+import math
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from core.event_bus import EventBus
+from core.event_bus import EventBus, EventSubmissionUnavailable
 from huginn_muninn_api.core.config import Settings
 from huginn_muninn_api.core.evidence_api import EvidenceApi
 from huginn_muninn_api.core.graph_intelligence_api import GraphIntelligenceApi
@@ -22,7 +26,22 @@ from huginn_muninn_api.schemas.memory import MemoryRecord, MemorySearchRequest
 from huginn_muninn_api.schemas.security import SecurityAnalysisRequest, SecurityAnalysisResponse
 
 settings = Settings()
-event_bus = EventBus()
+LOGGER = logging.getLogger(__name__)
+
+
+def _budget(name: str, default: float) -> float:
+    value = float(os.environ.get(name, default))
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError("Lifecycle time budgets must be positive and finite")
+    return value
+
+
+event_bus = EventBus(
+    processing_timeout=_budget("EVENT_PROCESSING_TIMEOUT_SECONDS", 5.0),
+    drain_timeout=_budget("EVENT_DRAIN_TIMEOUT_SECONDS", 5.0),
+    cancellation_timeout=_budget("EVENT_CANCELLATION_TIMEOUT_SECONDS", 1.0),
+)
+POOL_CLOSE_TIMEOUT = _budget("DATABASE_POOL_CLOSE_TIMEOUT_SECONDS", 5.0)
 orchestrator = Orchestrator(event_bus)
 repository_root = Path(__file__).resolve().parents[4]
 graph_intelligence = GraphIntelligenceApi(repository_root)
@@ -34,6 +53,24 @@ guardduty_ingest_api = GuardDutyIngestApi(repository_root)
 _store_pool = None
 
 
+async def _close_pool(pool, timeout: float) -> None:
+    closing = asyncio.create_task(pool.close())
+    try:
+        done, _ = await asyncio.wait({closing}, timeout=timeout)
+        if not done:
+            LOGGER.warning("database_pool stage=close result=timeout")
+            return
+        await closing
+    except Exception:  # noqa: BLE001 - cleanup must not expose database error details
+        LOGGER.warning("database_pool stage=close result=failed")
+    finally:
+        if not closing.done() or closing.cancelled() or closing.exception() is not None:
+            closing.cancel()
+            pool.terminate()
+            # Retrieve eventual failures without waiting indefinitely for cancellation.
+            closing.add_done_callback(lambda task: None if task.cancelled() else task.exception())
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     global _store_pool
@@ -42,21 +79,26 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # decides in-memory (default) vs Postgres. See huginn_muninn_api.core.persistence.
     stores = await build_stores(settings)
     _store_pool = stores.pool
-    event_bus.bind_log_store(stores.system_log_store)
-    orchestrator.muninn.bind_store(stores.memory_store)
-    orchestrator.outcome_tracker.bind_store(stores.outcome_store)
-    orchestrator.reasoning_patterns.bind_store(stores.pattern_store)
-    await orchestrator.hydrate()
-
-    await event_bus.start()
-    await live_telemetry_api.start_polling()
     try:
+        event_bus.bind_log_store(stores.system_log_store)
+        orchestrator.muninn.bind_store(stores.memory_store)
+        orchestrator.outcome_tracker.bind_store(stores.outcome_store)
+        orchestrator.reasoning_patterns.bind_store(stores.pattern_store)
+        await orchestrator.hydrate()
+        await event_bus.start()
+        await live_telemetry_api.start_polling()
         yield
     finally:
-        await live_telemetry_api.stop_polling()
-        await event_bus.stop()
-        if _store_pool is not None:
-            await _store_pool.close()
+        try:
+            await event_bus.stop()
+        finally:
+            try:
+                await live_telemetry_api.stop_polling()
+            finally:
+                if _store_pool is not None:
+                    await _close_pool(_store_pool, POOL_CLOSE_TIMEOUT)
+                    _store_pool = None
+
 
 app = FastAPI(
     title="HUGINN // MUNINN API",
@@ -74,18 +116,32 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(EventSubmissionUnavailable)
+async def event_submission_unavailable(_: Request, __: EventSubmissionUnavailable) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": "Event processing is unavailable"})
+
+
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "system": "huginn-muninn"}
+async def health(response: Response) -> dict[str, Any]:
+    worker = event_bus.health()
+    response.status_code = 200 if worker["available"] else 503
+    return {
+        "status": "ok" if worker["available"] else "degraded",
+        "system": "huginn-muninn",
+        "event_worker": worker,
+        "database_readiness": "not_checked",
+    }
 
 
 @app.post("/chat", response_model=ChatAcceptedResponse)
 async def chat(request: ChatRequest) -> ChatAcceptedResponse:
+    event_bus.ensure_available()
     return await orchestrator.chat(request)
 
 
 @app.post("/memory", response_model=MemoryRecord)
 async def remember(record: MemoryRecord) -> MemoryRecord:
+    event_bus.ensure_available()
     return await orchestrator.remember(record)
 
 

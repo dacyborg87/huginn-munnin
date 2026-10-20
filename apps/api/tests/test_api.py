@@ -5,8 +5,8 @@ from fastapi.testclient import TestClient
 
 from core.outcome_tracker import OutcomeTracker
 from core.reasoning_patterns import ReasoningPatternEngine
-from huginn_muninn_api.muninn.memory import MuninnMemory
 from huginn_muninn_api.main import app, orchestrator
+from huginn_muninn_api.muninn.memory import MuninnMemory
 
 
 @pytest.fixture(autouse=True)
@@ -71,11 +71,142 @@ def test_health() -> None:
         response = client.get("/health")
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
+        assert response.json()["event_worker"]["available"] is True
+        assert response.json()["database_readiness"] == "not_checked"
+
+
+@pytest.mark.parametrize("state", ["not_started", "closing", "stopped", "failed"])
+def test_event_submission_unavailable_returns_503(monkeypatch, state):
+    from core.event_bus import EventBus
+    from huginn_muninn_api import main
+
+    with TestClient(app) as client:
+        unavailable = EventBus()
+        unavailable._state = state
+        monkeypatch.setattr(main, "event_bus", unavailable)
+        for path, payload in [
+            ("/chat", {"message": "test"}),
+            ("/memory", {"content": "must not be stored"}),
+        ]:
+            response = client.post(path, json=payload)
+            assert response.status_code == 503
+            assert response.json() == {"detail": "Event processing is unavailable"}
+        response = client.get("/health")
+        assert response.status_code == 503
+        assert response.json()["event_worker"]["state"] == state
+        monkeypatch.undo()
+
+
+def test_pool_cleanup_independent_of_worker_stop_failure(monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from huginn_muninn_api import main
+
+    async def run():
+        pool = SimpleNamespace(close=AsyncMock(), terminate=Mock())
+        stores = SimpleNamespace(
+            pool=pool,
+            system_log_store=object(),
+            memory_store=object(),
+            outcome_store=object(),
+            pattern_store=object(),
+        )
+        monkeypatch.setattr(main, "build_stores", AsyncMock(return_value=stores))
+        monkeypatch.setattr(
+            main,
+            "event_bus",
+            SimpleNamespace(
+                bind_log_store=Mock(),
+                start=AsyncMock(),
+                stop=AsyncMock(side_effect=RuntimeError("stop")),
+            ),
+        )
+        monkeypatch.setattr(
+            main,
+            "orchestrator",
+            SimpleNamespace(
+                muninn=SimpleNamespace(bind_store=Mock()),
+                outcome_tracker=SimpleNamespace(bind_store=Mock()),
+                reasoning_patterns=SimpleNamespace(bind_store=Mock()),
+                hydrate=AsyncMock(),
+            ),
+        )
+        monkeypatch.setattr(
+            main,
+            "live_telemetry_api",
+            SimpleNamespace(start_polling=AsyncMock(), stop_polling=AsyncMock()),
+        )
+        with pytest.raises(RuntimeError, match="stop"):
+            async with main.lifespan(app):
+                pass
+        pool.close.assert_awaited_once()
+        pool.terminate.assert_not_called()
+
+    asyncio.run(run())
+
+
+def test_pool_close_timeout_terminates_without_sensitive_logging(caplog):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from huginn_muninn_api import main
+
+    async def run():
+        cancelled = asyncio.Event()
+
+        async def close():
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+        pool = SimpleNamespace(close=close, terminate=Mock())
+        await asyncio.wait_for(main._close_pool(pool, 0.005), 0.5)
+        pool.terminate.assert_called_once()
+        await asyncio.wait_for(cancelled.wait(), 0.5)
+        assert "stage=close result=timeout" in caplog.text
+
+    asyncio.run(run())
+
+
+def test_pool_close_failure_is_sanitized(caplog):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from huginn_muninn_api import main
+
+    async def run():
+        pool = SimpleNamespace(
+            close=AsyncMock(side_effect=RuntimeError("SECRET_DSN")), terminate=Mock()
+        )
+        await main._close_pool(pool, 0.1)
+        pool.terminate.assert_called_once()
+
+    asyncio.run(run())
+    assert "result=failed" in caplog.text
+    assert "SECRET_DSN" not in caplog.text
+
+
+def test_lifecycle_budget_environment(monkeypatch):
+    from huginn_muninn_api import main
+
+    monkeypatch.setenv("EVENT_DRAIN_TIMEOUT_SECONDS", "0.25")
+    assert main._budget("EVENT_DRAIN_TIMEOUT_SECONDS", 5.0) == 0.25
+    monkeypatch.setenv("EVENT_DRAIN_TIMEOUT_SECONDS", "nan")
+    with pytest.raises(ValueError):
+        main._budget("EVENT_DRAIN_TIMEOUT_SECONDS", 5.0)
 
 
 def test_memory_round_trip() -> None:
     with TestClient(app) as client:
-        record = {"content": "Project archive: built phase one memory scaffold.", "tags": ["project"]}
+        record = {
+            "content": "Project archive: built phase one memory scaffold.",
+            "tags": ["project"],
+        }
         create_response = client.post("/memory", json=record)
         assert create_response.status_code == 200
 
@@ -253,7 +384,8 @@ def test_reasoning_patterns_are_recorded_and_influence_similar_contexts() -> Non
         assert first_pattern["success_rate"] >= 0
 
         second_response = client.post(
-            "/chat", json={"message": "Create incident report workflow draft", "namespace": namespace}
+            "/chat",
+            json={"message": "Create incident report workflow draft", "namespace": namespace},
         )
         second_command_id = second_response.json()["event_id"]
 
