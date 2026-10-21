@@ -16,6 +16,39 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Admission foundation only. Apply this whole file through bootstrap_schema
+-- to fresh or existing databases: CREATE IF NOT EXISTS adds this independent
+-- table without updating, deleting, or importing historical records. It does
+-- not reconcile an incompatible pre-existing table; inspect such drift before
+-- deployment. Existing system_events and API contracts are unchanged.
+-- JSON object key order/whitespace is ignored for admission identity; array
+-- order, numeric representations (1 versus 1.0), and envelope metadata matter.
+-- Keep accepted records and scoped keys for the promised retry window; there
+-- is no automatic retention, dispatch, lease, retry, or migration in this phase.
+CREATE TABLE IF NOT EXISTS event_deliveries (
+    delivery_id UUID PRIMARY KEY,
+    source TEXT NOT NULL CHECK (length(btrim(source)) BETWEEN 1 AND 256),
+    operation TEXT NOT NULL CHECK (length(btrim(operation)) BETWEEN 1 AND 256),
+    idempotency_key TEXT NOT NULL CHECK (length(btrim(idempotency_key)) BETWEEN 1 AND 256),
+    event_id TEXT NOT NULL CHECK (length(btrim(event_id)) BETWEEN 1 AND 256),
+    event_type TEXT NOT NULL CHECK (length(btrim(event_type)) BETWEEN 1 AND 256),
+    -- JSON preserves canonical numeric spelling for repeatable admission hashes.
+    payload JSON NOT NULL CHECK (json_typeof(payload) = 'object')
+        CHECK (octet_length(payload::text) <= 262144),
+    payload_hash TEXT NOT NULL CHECK (payload_hash ~ '^[0-9a-f]{64}$'),
+    schema_version INTEGER NOT NULL CHECK (schema_version = 1),
+    trace_id TEXT CHECK (length(btrim(trace_id)) BETWEEN 1 AND 256),
+    parent_id TEXT CHECK (length(btrim(parent_id)) BETWEEN 1 AND 256),
+    state TEXT NOT NULL DEFAULT 'pending' CHECK (state = 'pending'),
+    attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count = 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (source, operation, idempotency_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_deliveries_created_at
+    ON event_deliveries (created_at, delivery_id);
+
 -- Muninn memory records (MemoryRecord).
 CREATE TABLE IF NOT EXISTS memories (
     id UUID PRIMARY KEY,
