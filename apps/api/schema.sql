@@ -1,7 +1,7 @@
 -- Muninn Persistence Foundation schema.
 --
--- Plain, idempotent SQL — no migration framework. Safe to run repeatedly
--- (CREATE TABLE/INDEX IF NOT EXISTS). Applied via
+-- Repeatable SQL with transactional delivery-constraint evolution.
+-- No versioned migration framework. Applied via
 -- huginn_muninn_api.core.persistence.bootstrap_schema() at startup when
 -- persistence_backend="postgres", or manually with:
 --
@@ -24,7 +24,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- JSON object key order/whitespace is ignored for admission identity; array
 -- order, numeric representations (1 versus 1.0), and envelope metadata matter.
 -- Keep accepted records and scoped keys for the promised retry window; there
--- is no automatic retention, dispatch, lease, retry, or migration in this phase.
+-- is no automatic retention, dispatch, retry, or replay in this phase.
 CREATE TABLE IF NOT EXISTS event_deliveries (
     delivery_id UUID PRIMARY KEY,
     source TEXT NOT NULL CHECK (length(btrim(source)) BETWEEN 1 AND 256),
@@ -48,6 +48,50 @@ CREATE TABLE IF NOT EXISTS event_deliveries (
 
 CREATE INDEX IF NOT EXISTS idx_event_deliveries_created_at
     ON event_deliveries (created_at, delivery_id);
+
+-- Preserve admission rows while evolving the original restrictions. This DO
+-- statement is atomic, including constraint replacement; validation failure
+-- rolls back all its changes. Apply during a maintenance window: ALTER TABLE
+-- requires an exclusive lock. The bounded lock wait fails explicitly.
+DO $$
+BEGIN
+    PERFORM set_config('lock_timeout', '5s', true);
+    PERFORM pg_advisory_xact_lock(734832002);
+    ALTER TABLE event_deliveries
+        ADD COLUMN IF NOT EXISTS worker_id TEXT,
+        ADD COLUMN IF NOT EXISTS lease_token UUID,
+        ADD COLUMN IF NOT EXISTS lease_expires_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS available_at TIMESTAMPTZ NOT NULL DEFAULT now();
+    ALTER TABLE event_deliveries
+        DROP CONSTRAINT IF EXISTS event_deliveries_state_check,
+        DROP CONSTRAINT IF EXISTS event_deliveries_attempt_count_check,
+        DROP CONSTRAINT IF EXISTS event_deliveries_lease_check;
+    ALTER TABLE event_deliveries
+        ADD CONSTRAINT event_deliveries_state_check CHECK
+            (state IN ('pending','processing','retry_scheduled','completed','dead_lettered')),
+        ADD CONSTRAINT event_deliveries_attempt_count_check CHECK
+            (attempt_count >= 0 AND (state NOT IN ('processing','completed') OR attempt_count > 0)),
+        ADD CONSTRAINT event_deliveries_lease_check CHECK (
+            (state = 'processing' AND worker_id IS NOT NULL
+             AND length(btrim(worker_id)) BETWEEN 1 AND 256
+             AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)
+            OR (state <> 'processing' AND worker_id IS NULL
+                AND lease_token IS NULL AND lease_expires_at IS NULL));
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_event_deliveries_eligible
+    ON event_deliveries (available_at, created_at, delivery_id)
+    WHERE state IN ('pending', 'retry_scheduled');
+CREATE INDEX IF NOT EXISTS idx_event_deliveries_expired
+    ON event_deliveries (lease_expires_at) WHERE state = 'processing';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_event_deliveries_lease_token
+    ON event_deliveries (lease_token) WHERE lease_token IS NOT NULL;
+
+-- Permitted store transitions: due pending/retry_scheduled -> processing;
+-- expired processing -> processing with NEW token and incremented attempt;
+-- unexpired processing -> completed with matching worker/token, clearing lease.
+-- No operation schedules retries or dead-letters work yet. Processing happens
+-- outside claim transactions; tokens fence storage updates, not external effects.
 
 -- Muninn memory records (MemoryRecord).
 CREATE TABLE IF NOT EXISTS memories (

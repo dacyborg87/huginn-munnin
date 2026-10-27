@@ -85,3 +85,19 @@ def test_connection_failure_is_explicit_and_sanitized():
     assert "SECRET_PASSWORD" not in str(error.value)
     assert original.idempotency_key == "key"
     assert original.payload == {"a": 1}
+
+
+@pytest.mark.parametrize("seconds", [0, -1, float("nan"), float("inf"), True, "30", 86401])
+def test_invalid_lease_duration(seconds):
+    pool = MagicMock()
+    with pytest.raises(ValueError):
+        asyncio.run(PostgresDeliveryStore(pool).claim("worker", lease_seconds=seconds))
+    pool.acquire.assert_not_called()
+
+
+@pytest.mark.parametrize("worker", ["", " ", "x" * 257, "\x00", "\ud800", None])
+def test_invalid_worker_identifier(worker):
+    pool = MagicMock()
+    with pytest.raises(ValueError):
+        asyncio.run(PostgresDeliveryStore(pool).claim(worker))
+    pool.acquire.assert_not_called()

@@ -21,6 +21,10 @@ class DeliveryConflict(ValueError):
     """The scoped key already identifies a different envelope."""
 
 
+class DeliveryOwnershipError(RuntimeError):
+    """Completion rejected: ownership is absent, replaced, or expired."""
+
+
 class DeliveryStorageError(RuntimeError):
     """Admission was not confirmed; retry the same envelope and key."""
 
@@ -115,3 +119,7 @@ class DeliveryRecord:
     attempt_count: int
     created_at: datetime
     updated_at: datetime
+    worker_id: str | None = None
+    lease_token: UUID | None = None
+    lease_expires_at: datetime | None = None
+    available_at: datetime | None = None

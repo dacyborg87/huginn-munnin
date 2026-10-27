@@ -1,4 +1,4 @@
-"""Opt-in PostgreSQL admission only: no fallback, dispatcher, or automatic retry.
+"""Opt-in admission and explicit leases: no dispatcher or automatic retry.
 
 Construct with a dedicated asyncpg pool after the existing schema bootstrap.
 The caller owns the pool. No production route instantiates this store yet.
@@ -10,6 +10,7 @@ There is deliberately no memory implementation or retry loop.
 from __future__ import annotations
 
 import json
+import math
 from typing import Protocol
 from uuid import UUID, uuid4
 
@@ -18,6 +19,7 @@ import asyncpg
 from core.event_delivery import (
     DeliveryConflict,
     DeliveryEnvelope,
+    DeliveryOwnershipError,
     DeliveryRecord,
     DeliveryStorageError,
 )
@@ -28,10 +30,96 @@ class DeliveryStore(Protocol):
 
     async def get(self, delivery_id: UUID) -> DeliveryRecord | None: ...
 
+    async def claim(
+        self, worker_id: str, *, lease_seconds: float = 30.0, source: str | None = None
+    ) -> DeliveryRecord | None: ...
+
+    async def complete(
+        self, delivery_id: UUID, worker_id: str, lease_token: UUID
+    ) -> DeliveryRecord: ...
+
 
 class PostgresDeliveryStore:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._pool = pool
+
+    async def claim(
+        self, worker_id: str, *, lease_seconds: float = 30.0, source: str | None = None
+    ) -> DeliveryRecord | None:
+        """Commit one claim, including explicit expired-lease recovery.
+
+        No processing occurs here. An ambiguously committed claim is left to
+        expire; this method never retries it. Pool timeouts bound DB waits.
+        """
+        _identifier(worker_id)
+        if source is not None:
+            _identifier(source)
+        if (
+            type(lease_seconds) not in (int, float)
+            or not math.isfinite(lease_seconds)
+            or not 0 < lease_seconds <= 86400
+        ):
+            raise ValueError("Lease duration must be positive and at most 86400 seconds")
+        try:
+            async with self._pool.acquire() as conn:  # noqa: SIM117 - explicit commit boundary
+                async with conn.transaction(isolation="read_committed"):
+                    row = await conn.fetchrow(
+                        """WITH candidate AS (
+                            SELECT delivery_id FROM event_deliveries
+                            WHERE ($1::text IS NULL OR source=$1) AND (
+                              (state IN ('pending','retry_scheduled')
+                               AND available_at <= clock_timestamp())
+                              OR (state='processing' AND lease_expires_at <= clock_timestamp()))
+                            ORDER BY created_at, delivery_id
+                            FOR UPDATE SKIP LOCKED LIMIT 1
+                        )
+                        UPDATE event_deliveries d SET state='processing',
+                            attempt_count=d.attempt_count+1, worker_id=$2, lease_token=$3,
+                            lease_expires_at=clock_timestamp()+$4::double precision*interval '1 second',
+                            updated_at=clock_timestamp()
+                        FROM candidate c WHERE d.delivery_id=c.delivery_id RETURNING d.*""",
+                        source,
+                        worker_id,
+                        uuid4(),
+                        lease_seconds,
+                    )
+                    record = _record(row) if row else None
+            return record
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, TimeoutError):
+            raise DeliveryStorageError("Delivery claim not confirmed") from None
+
+    async def complete(
+        self, delivery_id: UUID, worker_id: str, lease_token: UUID
+    ) -> DeliveryRecord:
+        """Reject expired, stale, and repeated completion with a conditional update."""
+        _identifier(worker_id)
+        if not isinstance(delivery_id, UUID) or not isinstance(lease_token, UUID):
+            raise TypeError("Delivery and lease identifiers must be UUIDs")
+        try:
+            async with self._pool.acquire() as conn:  # noqa: SIM117 - explicit commit boundary
+                async with conn.transaction(isolation="read_committed"):
+                    # Check database time AFTER acquiring the row lock, not before
+                    # a possible lock wait that might outlast the lease.
+                    await conn.fetchval(
+                        "SELECT delivery_id FROM event_deliveries WHERE delivery_id=$1 FOR UPDATE",
+                        delivery_id,
+                    )
+                    row = await conn.fetchrow(
+                        """UPDATE event_deliveries SET state='completed', worker_id=NULL,
+                        lease_token=NULL, lease_expires_at=NULL, updated_at=clock_timestamp()
+                        WHERE delivery_id=$1 AND state='processing' AND worker_id=$2
+                        AND lease_token=$3 AND lease_expires_at > clock_timestamp()
+                        RETURNING *""",
+                        delivery_id,
+                        worker_id,
+                        lease_token,
+                    )
+                    if row is None:
+                        raise DeliveryOwnershipError("Delivery ownership is not valid")
+                    record = _record(row)
+            return record
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, TimeoutError):
+            raise DeliveryStorageError("Delivery completion not confirmed") from None
 
     async def admit(self, envelope: DeliveryEnvelope) -> DeliveryRecord:
         payload, digest = envelope.encode()
@@ -123,4 +211,17 @@ def _record(row) -> DeliveryRecord:
         attempt_count=row["attempt_count"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
+        worker_id=row["worker_id"],
+        lease_token=row["lease_token"],
+        lease_expires_at=row["lease_expires_at"],
+        available_at=row["available_at"],
     )
+
+
+def _identifier(value: str) -> None:
+    if type(value) is not str or not value.strip() or len(value) > 256 or "\x00" in value:
+        raise ValueError("Invalid worker or source identifier")
+    try:
+        value.encode("utf-8")
+    except UnicodeError:
+        raise ValueError("Invalid worker or source identifier") from None
