@@ -1,6 +1,6 @@
-# Huginn/Muninn
+# HUGINN // MUNINN
 
-Defensive intelligence dashboard connecting security telemetry, MITRE ATT&CK context, and evidence-backed analysis.
+A defensive intelligence platform that organizes security telemetry, connects events to MITRE ATT&CK, records evidence and uncertainty, and provides an investigation dashboard. Built as a cybersecurity portfolio and engineering project for synthetic labs and controlled local testing, not production security operations.
 
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) ![Next.js 15](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
@@ -13,16 +13,13 @@ Security alerts from Wazuh (endpoint) or AWS GuardDuty (cloud) are sent to the F
 **Huginn** is the thought engine — it routes incoming requests, classifies intent, and coordinates the analysis pipeline.  
 **Muninn** is the memory engine — it stores event history, reasoning patterns, and outcome records across the session.
 
-## One-Command Demo
+## Engineering Status
 
-```bash
-chmod +x demo.sh
-./demo.sh
-```
+The verified foundation includes restart-persistent security artifacts, synchronized repository module loading, a failure-contained in-memory event worker, and a separate PostgreSQL delivery store with durable admission, scoped idempotency, atomic claims, and explicit expired-lease recovery.
 
-The script checks dependencies, starts both servers, waits until the API is healthy, injects a synthetic Wazuh alert, and tells you exactly what to look at. Press **Ctrl+C** to stop.
+**The delivery store is not connected to production routes or workflow handlers.** Storage recovery does not imply automatic processing. See [architecture](docs/architecture.md), [persistence and recovery](docs/MUNINN_PERSISTENCE.md), and [milestone history](CHANGELOG.md).
 
-> Logs: `cat /tmp/huginn-api.log` · `cat /tmp/huginn-web.log`
+Use the manual quick start below for controlled testing. The existing `demo.sh` convenience script installs dependencies, starts services, and writes a synthetic alert to repository artifacts; it is not a read-only validation tool. Use a disposable checkout for write demonstrations.
 
 ## What Is Real vs. Synthetic
 
@@ -63,13 +60,16 @@ The dashboard is a single-page Next.js application with the following panels, al
 - Runtime Wazuh/GuardDuty ingestion persists the Security Knowledge Graph to `reports/knowledge-graph.json` and evidence to `reports/evidence-index.json`; graph counts are published to `core/patterns/knowledge-graph-summary.json`. API restarts preserve these files. Keep these directories on writable, persistent local storage (including when running in containers). Deleting the checkout, replacing it with a fresh deployment, or regenerating sample artifacts can erase runtime data.
 - JSON storage uses a shared macOS/Linux file lock around ingestion and atomic, fsynced file replacements. It rewrites whole artifacts and is intended for a local demo, not distributed/high-volume ingestion. Graph, summary, and evidence are separate writes, not a multi-file transaction: interrupted or failed requests may partially persist and should be retried with the same alert IDs. Accepted requests need no shutdown flush. The telemetry report shows the latest batch, not the complete persisted history.
 - Standalone `KnowledgeGraph()` instances remain in-memory until explicitly saved. Runtime ingestion uses JSON regardless of Muninn's `persistence_backend` setting; evidence queries prefer the persisted index over stale generated records with the same ID.
-- Muninn's reasoning memory (chat memory records, outcome history, learned path weights, reasoning patterns, and the full system event log) can now optionally persist to Postgres across restarts — set `persistence_backend=postgres` and run `docker compose up -d postgres`. The default remains in-memory (matching every prior milestone), so this is opt-in, not automatic. See [docs/MUNINN_PERSISTENCE.md](docs/MUNINN_PERSISTENCE.md).
+- Muninn's reasoning memory (chat memory records, outcome history, learned path weights, reasoning patterns, and the full system event log) can optionally persist to PostgreSQL across restarts. The default remains in-memory. Review database identity, credentials, port bindings, and startup schema changes before enabling `PERSISTENCE_BACKEND=postgres`; see [docs/MUNINN_PERSISTENCE.md](docs/MUNINN_PERSISTENCE.md).
 - Intelligence is rule-based and graph-based. There is no machine learning, no language model, and no external AI API call anywhere in the running code.
 - The Conversation panel accepts text input but responds with template strings, not generated analysis.
 - Wazuh and GuardDuty ingestion accepts JSON payloads directly. There is no live connection to a running Wazuh instance or AWS account.
 - The SOC layer (Wazuh + Suricata) is scaffolded — the detection rules exist, but the full pipeline to a live sensor is not wired.
 - No authentication or access control has been implemented.
 - ChromaDB in `docker-compose.yml` remains unused by the current application — it is a placeholder for future vector-search work, out of scope for this milestone.
+- EventBus acceptance is best-effort and in-memory even when its event log uses PostgreSQL. A crash can lose queued events. Individual failures are counted, not retried automatically.
+- The separate delivery store has no automatic durable dispatch, complete retry execution policy, dead-letter handling, lease renewal, or complete handler-side-effect deduplication. End-to-end delivery guarantees and exactly-once external execution have not been demonstrated.
+- Docker uses development credentials and host port bindings that require hardening. Existing ingestion endpoints may expose raw exception details. Keep services on loopback; production deployment has not been approved.
 
 ## What I Learned
 
@@ -84,14 +84,22 @@ The dashboard is a single-page Next.js application with the following panels, al
 
 ```mermaid
 flowchart TD
-    A["Security Events\nWazuh · GuardDuty"] --> B["Parser Layer\nEventRecord schema"]
-    B --> C["Knowledge Graph\nMITRE · entities · relationships"]
-    C --> D["Evidence Layer\nconfidence scoring · gap detection"]
-    D --> E["FastAPI\ningestion · graph · evidence · telemetry"]
-    E --> F["Next.js Dashboard\nLive Telemetry · Graph Intelligence · Evidence"]
+    A[Wazuh / GuardDuty JSON] --> B[FastAPI ingest adapters]
+    B --> C[EventRecord normalization]
+    C --> D[Security graph / MITRE relationships]
+    D --> E[Evidence confidence / gaps]
+    D --> J[Local JSON artifacts]
+    E --> J
+    J --> Q[Graph / evidence / telemetry APIs]
+    Q --> F[Next.js dashboard]
+    F --> H[Chat / memory APIs]
+    H --> I[Best-effort in-memory EventBus]
+    I --> M[Reasoning stores: memory or PostgreSQL]
+    T[Explicit delivery-store callers / tests] --> P[PostgreSQL event_deliveries]
+    P --> L[Claims / leases / checked completion]
 ```
 
-Adding a new telemetry source requires a parser and an ingest adapter. The graph, evidence layer, and dashboard require no changes.
+The three persistence paths are separate: security graph/evidence JSON, optional reasoning-store PostgreSQL, and opt-in delivery storage. Adding a source can reuse `EventRecord`, but its mappings, evidence semantics, and dashboard compatibility still require validation.
 
 ## API Reference
 
@@ -112,34 +120,43 @@ Adding a new telemetry source requires a parser and an ingest adapter. The graph
 
 ## Quick Start
 
-**Requirements:** Python 3.11 or higher · Node.js 22
+**Validated environment:** Python 3.11.15, Node.js 22.23.1, npm 10.9.8; macOS local storage. Python declares `>=3.11`; other versions are not covered by this baseline. JSON file locking supports macOS/Linux, not native Windows. Python dependencies use ranges without a lockfile; frontend versions are locked by `package-lock.json`.
+
+Start each terminal at the repository root. Ensure ports 8000 and 3000 are free. The default demo needs neither Docker nor PostgreSQL. Do not use real investigation data in this unauthenticated local setup.
 
 ### Backend
 
 ```bash
 cd apps/api
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-PYTHONPATH=src uvicorn huginn_muninn_api.main:app --reload --host 127.0.0.1
-curl http://localhost:8000/health
+python3.11 -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src PERSISTENCE_BACKEND=memory \
+  .venv/bin/python -m uvicorn huginn_muninn_api.main:app \
+  --host 127.0.0.1 --port 8000 --workers 1
 ```
+
+In another terminal, `curl -f http://127.0.0.1:8000/health` should report an available event worker. This is application health, not database readiness.
 
 ### Dashboard
 
 > **Mac (Homebrew) only:** if Node 22 is not your default, run this first:
 > `export PATH="/opt/homebrew/opt/node@22/bin:$PATH"`
 >
-> On Linux or Windows, install Node 22 from [nodejs.org](https://nodejs.org) and skip this step.
+> On other supported local environments, use Node 22 and skip this step.
 
 ```bash
 cd apps/web
-npm install
-npm run dev
+npm ci
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 npm run dev
 ```
 
 Open `http://localhost:3000`.
 
+For production-build validation, from `apps/web` run `npm run lint`, then `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 npm run build`. The build performs TypeScript validation. To serve that build locally, use `npm run start -- --hostname 127.0.0.1 --port 3000` instead of the dev server. Public API URL settings are embedded at build time. Stop servers with Ctrl+C in their own terminals.
+
 ### Ingest a test alert
+
+**This writes graph, evidence, summary, and pipeline JSON in the checkout.** Use a disposable copy, not a protected baseline. Historical synthetic timestamps are not live detections. Inspect the graph/evidence panels before and after submission; their totals cover different scopes from the latest-batch telemetry panel.
 
 ```bash
 curl -X POST http://localhost:8000/ingest/wazuh \
@@ -182,26 +199,39 @@ Expect connected MITRE techniques and one event evidence record per finding both
 
 ## Testing
 
-Most tests use direct unit calls to keep startup and lifespan behavior isolated; `test_api.py` and the persistence integration tests use `TestClient`/a live event loop directly instead. The `anyio` plugin is disabled and `PYTHONPATH=src` is required.
+### Recorded validation baseline
+
+Phase 2 technical validation on 2026-10-27 covered the exact implementation later committed as `9371666`. These are recorded results, not tests rerun during this documentation phase.
+
+| Check | Recorded result |
+| --- | --- |
+| Backend discovery | 278 tests |
+| Backend with separate isolated PostgreSQL databases | 274 passed, 0 failed, 0 skipped, 4 deselected |
+| Artifact-writing tests in a temporary repository copy | 4 passed |
+| Focused delivery tests (subset of the above) | 41 passed |
+| Worker-crash recovery diagnostic | Passed: abrupt process exit, real lease expiry, competing recovery, stale-token rejection |
+| Ruff / frontend ESLint / TypeScript / Next.js production build | Passed |
+
+All 278 discovered backend tests passed **across isolated runs, not in one combined invocation**. The crash diagnostic was temporary validation code, not a committed test. Backend validation reported a Starlette/AnyIO deprecation warning; `next lint` reported its planned removal in Next.js 16.
+
+### Safe default regression run
+
+From the repository root, with dependencies already installed:
 
 ```bash
 cd apps/api
-PYTHONPATH=src .venv/bin/python -m pytest tests/ -p no:anyio -v
+env -u TEST_DATABASE_URL -u HM_DELIVERY_TEST_DSN \
+  PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  .venv/bin/python -B -m pytest tests/ -p no:cacheprovider -q -rs \
+  --deselect=tests/test_evidence_query.py::test_committed_sample_evidence_query_output_loads \
+  --deselect=tests/test_graph_ingest.py::test_committed_sample_graph_ingest_output_loads \
+  --deselect=tests/test_real_data_evidence.py::test_committed_real_data_evidence_output_loads \
+  --deselect=tests/test_wazuh_pipeline.py::test_committed_sample_wazuh_pipeline_output_loads
 ```
 
-Tests cover ingestion, evidence, graph intelligence, telemetry refresh, orchestration, and persistence. Security storage restart tests run real HTTP routes in independent Python processes, exit without shutdown hooks, and verify both sources remain queryable and deduplicated. Run the focused suite from `apps/api`:
+This selection previously produced 253 passed, 21 skipped, 4 deselected without PostgreSQL. Existing pytest configuration disables the AnyIO plugin. The four excluded tests regenerate committed reports; run them only in a temporary copy containing source, fixtures, and reports. Disabling bytecode and pytest caches alone does not prevent those artifact writes.
 
-```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/test_ingest_persistence.py tests/test_json_persistence.py tests/test_evidence_query.py -q
-```
-
-Postgres-backed tests self-skip unless `TEST_DATABASE_URL` is set:
-
-```bash
-docker compose up -d postgres
-TEST_DATABASE_URL=postgresql://muninn:muninn@localhost:5432/muninn \
-  PYTHONPATH=src .venv/bin/python -m pytest tests/ -p no:anyio -v
-```
+See [isolated PostgreSQL test instructions](docs/MUNINN_PERSISTENCE.md#isolated-postgresql-tests). Never point tests at a development or production database: some legacy fixtures delete rows. Tests cover EventBus reliability, Wazuh/GuardDuty ingestion, graph/evidence queries, restart persistence, and durable-delivery storage.
 
 ## Tech Stack
 
@@ -212,8 +242,8 @@ TEST_DATABASE_URL=postgresql://muninn:muninn@localhost:5432/muninn \
 | Graph | JSON-backed runtime knowledge graph with relationship traversal; standalone instances remain in-memory |
 | Evidence | Custom confidence scoring and gap detection engine |
 | Frontend | Next.js 15, TypeScript, Tailwind CSS |
-| Testing | pytest: 198 passed, 12 skipped; unit and HTTP restart/integration tests |
-| Persistence | Security graph/evidence: local JSON; Muninn reasoning: opt-in asyncpg (Postgres), in-memory by default |
+| Testing | pytest; 278 discovered tests passed across isolated validation runs |
+| Persistence | Local JSON security artifacts; optional PostgreSQL reasoning stores; separate PostgreSQL admission/lease foundation |
 | Telemetry sources | Wazuh (endpoint), AWS GuardDuty (cloud) |
 | MITRE | ATT&CK technique mapping, graph-connected |
 
@@ -230,6 +260,11 @@ TEST_DATABASE_URL=postgresql://muninn:muninn@localhost:5432/muninn \
 - [x] One-command demo script
 - [x] Muninn reasoning-memory persistence (opt-in Postgres backend for memory, outcomes, learned weights, reasoning patterns, event log — see [docs/MUNINN_PERSISTENCE.md](docs/MUNINN_PERSISTENCE.md))
 - [x] Persistent Security Knowledge Graph and evidence index (local JSON, independent of Muninn reasoning memory)
+- [x] Shared module-loader synchronization and bounded EventBus failure/shutdown handling
+- [x] PostgreSQL durable admission, scoped idempotency, atomic claims, explicit lease recovery
+- [ ] Durable dispatcher and handler integration with side-effect idempotency
+- [ ] Lease renewal, bounded retry execution, and dead-letter policy
+- [ ] Authentication, least-privilege deployment, and sanitized ingestion errors
 - [ ] Live Wazuh API connection (planned)
 - [ ] Voice interface — Hey Huginn (planned)
 
@@ -241,7 +276,7 @@ See [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) for the full demo walkthrough.
 - All test fixtures and graph seed data use synthetic data only.
 - `docker-compose.yml` provisions Postgres (now used, opt-in, by Muninn's persistence layer — see [docs/MUNINN_PERSISTENCE.md](docs/MUNINN_PERSISTENCE.md)) and ChromaDB (still unused, placeholder for future vector-search work). Neither is required to run the demo — Muninn defaults to in-memory, while runtime security graph/evidence use local JSON.
 - This project is a cybersecurity portfolio and learning exercise. It is not production-ready and has no authentication.
-- `docs/architecture.md` describes the long-term intended architecture, not the current implemented state.
+- [Architecture](docs/architecture.md) distinguishes implemented components from planned capabilities.
 
 ## License
 
